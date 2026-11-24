@@ -1,33 +1,30 @@
 # Changelog
 
-## v0.3.2 — GT 2 alarm interval experiment
-- Three distinct alerts are now spaced at 0, 16, 32 seconds instead of 0, 8, 16.
-- User verified all three phone notifications but GT 2 vibrated only for alerts one and three.
-- Keep 60-second burst-start cooldown, night mode, detector, burst cancellation and version label unchanged.
-- Update scheduler unit tests and daytime test instructions.
-- Watch vibration behaviour at 16-second spacing must still be tested on the device.
+## v0.3.3 — Two short snores in 15 seconds
+- Replace 3-of-5 full-second snore rule with distinct-event detection.
+- Analyze 975 ms YAMNet windows every 250 ms, with 4,000 new and 11,600 overlapping PCM samples.
+- Group overlapping positives within the same inhale; count a new event after >=1,250 ms between positive windows.
+- Trigger after two distinct events within 15 s, subject to 60-second cooldown.
+- Keep tested GT 2 alerts at 0/16/32 s; normal exhalation no longer cancels subsequent alerts immediately.
+- Cancel pending alerts after >20 s without a positive classification, on STOP, or after night ends.
+- Mark new sessions as breaths_v1 with hopMs=250 and preserve old statistics interpretation.
+- Build version 0.3.3 (33), shown from installed package info.
+- Add deterministic event-detector and sliding-window tests. Real overnight validation remains necessary.
+
+## v0.3.2 — GT 2 alarm interval
+- Separate alerts spaced 0/16/32 s; user confirmed three daytime watch vibrations.
 
 ## v0.3.1 — Visible installed version
-- Show `v<versionName> · build <versionCode>` in the home screen header.
-- Read version from Android PackageManager for the installed APK, without hard-coded version strings.
-- No changes to snore detection, 3× alarm schedule, night window, or saved sessions.
-- Android build metadata bumped to versionName 0.3.1, versionCode 31.
+- Show installed APK version in the home header.
 
-## v0.3.0 — Burst alert (Huawei GT 2)
-- 3 distinct notifications: immediately, +8 s, +16 s.
-- No overlapping bursts; cooldown between burst starts remains 60 s.
-- Cancel pending steps when snoring ends or monitoring stops.
-- Manual **Test jačeg alarma ×3** works in daytime without the microphone.
-- Count emitted notification attempts separately from detected alarm series.
-- Added alarm scheduling tests and updated Serbian setup/test documentation.
-
-Known limitations: Huawei Health may coalesce/ignore notifications, especially during sleep. Real phone/watch validation and full Android build remain pending. No automatic Viber/WhatsApp night filtering is included.
+## v0.3.0 — Burst alerts
+- Three independent notifications, manual daytime test, cooldown, night mode, YAMNet model.
 
 ## v0.1.2
-- Fixed XML Button `android:textAllCaps` attribute.
+- Fix textAllCaps in Android XML.
 
 ## v0.1.1
-- Fixed Gradle Kotlin DSL `File` and `URL` imports.
+- Fix Gradle Kotlin File and URL imports.
 
 ## v0.1.0
-- Initial microphone/YAMNet MVP, night mode, notification bridge to GT 2, session history.
+- First YAMNet microphone prototype.

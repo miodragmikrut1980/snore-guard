@@ -26,10 +26,17 @@ class MonitorService : Service() {
     private var wakeLock: PowerManager.WakeLock? = null
     private lateinit var store: SessionStore
     private val mainHandler = Handler(Looper.getMainLooper())
-    @Volatile private var quietFramesForBurst = 0
+    @Volatile private var lastPositiveRealtime = -1L
+    // Short quiet gaps are normal between inhalations. Do not cancel after a
+    // single exhale; stop later burst steps after prolonged silence instead.
+    private val burstQuietTimeoutMillis = 20_000L
     private val alertBurst = AlarmBurst(
         scheduler = BurstScheduler { delay, action -> mainHandler.postDelayed({ action() }, delay) },
-        canContinue = { recording && quietFramesForBurst < 3 && NightWindow.isNight(LocalTime.now()) },
+        canContinue = {
+            recording && NightWindow.isNight(LocalTime.now()) &&
+                lastPositiveRealtime >= 0L &&
+                SystemClock.elapsedRealtime() - lastPositiveRealtime <= burstQuietTimeoutMillis
+        },
         emit = { step ->
             try {
                 AlertNotifier.sendWatchAlert(this, test = false, step = step)
@@ -85,7 +92,7 @@ class MonitorService : Service() {
         }
         store.recoverInterrupted()
         store.begin()
-        quietFramesForBurst = 0
+        lastPositiveRealtime = -1L
         recording = true
         isActive = true
         worker = Thread({ recordLoop() }, "SnoreGuardAudio").apply { start() }
@@ -121,31 +128,61 @@ class MonitorService : Service() {
             check(audio.recordingState == AudioRecord.RECORDSTATE_RECORDING) { "Mikrofon ne snima" }
             store.update(engine, lastScore, modelActive = true)
 
-            val chunk = ShortArray(YamnetSnoreDetector.SAMPLES)
+            // YAMNet requires 15,600 samples (~975 ms). Re-analyse every
+            // 4,000 NEW samples (250 ms), retaining the previous 11,600.
+            // This catches short inhalations at a finer resolution without
+            // treating overlapped positive classifications as new breaths.
+            val rolling = SlidingAudioWindow(
+                frameSamples = YamnetSnoreDetector.SAMPLES,
+                hopSamples = HOP_SAMPLES
+            )
+            val audioStartElapsed = SystemClock.elapsedRealtime()
+            var sampleTimeMs = 975L
+            var firstFrame = true
             while (recording && NightWindow.isNight(LocalTime.now())) {
+                val offset: Int
+                val count: Int
+                if (firstFrame) {
+                    offset = 0
+                    count = rolling.frameSamples
+                } else {
+                    rolling.shiftForNextHop()
+                    offset = rolling.tailOffset
+                    count = rolling.hopSamples
+                    sampleTimeMs += WINDOW_HOP_MS
+                }
                 var filled = 0
-                while (filled < chunk.size && recording) {
-                    val count = audio.read(chunk, filled, chunk.size - filled, AudioRecord.READ_BLOCKING)
-                    if (count <= 0) {
-                        if (recording) throw IllegalStateException("AudioRecord greška: $count")
+                while (filled < count && recording) {
+                    val received = audio.read(
+                        rolling.samples, offset + filled, count - filled, AudioRecord.READ_BLOCKING
+                    )
+                    if (received <= 0) {
+                        if (recording) throw IllegalStateException("AudioRecord greška: $received")
                         break
                     }
-                    filled += count
+                    filled += received
                 }
-                if (!recording || filled < chunk.size) break
-                lastScore = classifier.classify(chunk)
+                if (!recording || filled < count) break
+                firstFrame = false
+
+                lastScore = classifier.classify(rolling.samples)
                 val snore = lastScore >= Settings.MODEL_THRESHOLD
-                quietFramesForBurst = if (snore) 0 else (quietFramesForBurst + 1).coerceAtMost(3)
-                if (quietFramesForBurst >= 3) mainHandler.post { alertBurst.cancel() }
-                val night = NightWindow.isNight(LocalTime.now())
-                val alert = engine.process(snore, night, SystemClock.elapsedRealtime())
+                if (snore) lastPositiveRealtime = SystemClock.elapsedRealtime()
+
+                // Detector uses AUDIO sample time, preventing slow inference
+                // from turning one long positive breath into two separate ones.
+                val alert = engine.process(
+                    isSnore = snore,
+                    mayAlert = NightWindow.isNight(LocalTime.now()),
+                    elapsedMillis = audioStartElapsed + sampleTimeMs
+                )
                 if (alert) {
                     store.update(engine, lastScore, modelActive = true)
-                    // The alarm's first notification is immediate; steps 2/3 are sent
-                    // 16/32 seconds later ONLY while hrkanje continues and service is active.
                     mainHandler.post { if (recording) alertBurst.start() }
                 }
-                if (engine.analysedFrames % 5 == 0) store.update(engine, lastScore, modelActive = true)
+                if (engine.analysedFrames % 20 == 0) {
+                    store.update(engine, lastScore, modelActive = true)
+                }
             }
         } catch (e: Exception) {
             Log.e("SnoreGuard", "Monitoring failed", e)
@@ -185,6 +222,8 @@ class MonitorService : Service() {
         const val ACTION_START = "rs.snoreguard.mvp.START"
         const val ACTION_STOP = "rs.snoreguard.mvp.STOP"
         private const val SAMPLE_RATE = 16000
+        private const val HOP_SAMPLES = 4_000
+        private const val WINDOW_HOP_MS = 250L
         @Volatile var isActive: Boolean = false
             private set
     }

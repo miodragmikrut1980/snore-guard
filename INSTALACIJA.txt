@@ -1,61 +1,45 @@
-SNOREGUARD 0.3.0 — UPUTSTVO ZA INSTALACIJU
-=============================================
+SNOREGUARD 0.3.3 — UPUTSTVO (XIAOMI 14T + HUAWEI GT 2)
+=======================================================
 
-POTREBNO
-- Mac ili Windows/Linux sa Android Studio, Android SDK 35 i JDK 17+ (ugrađeni JDK u Android Studio je dovoljan).
-- Android telefon (na primer Xiaomi), Android 8 ili noviji.
-- Huawei Watch GT 2 već uparen sa telefonom kroz Huawei Health.
-- Internet na RAČUNARU za prvo preuzimanje Gradle alata, biblioteka i YAMNet modela.
+INSTALACIJA
+1) Na telefonu otvori https://github.com/miodragmikrut1980/snore-guard/actions
+2) Otvori najnoviji USPESAN Android build za v0.3.3.
+3) U sekciji Artifacts preuzmi ZIP sa debug APK-om.
+4) Raspakuj ZIP, otvori app-debug.apk i instaliraj.
+5) Ako se pojavi konflikt digitalnog potpisa, NE BRISI staru instalaciju
+   pre nego sto sacuvas statistiku koju zelis. Brisanjem se gube podaci.
+6) U vrhu SnoreGuard aplikacije treba da pise v0.3.3 · build 33.
 
-A. OTVORI PROJEKAT
-1) Raspakuj SnoreGuard-Huawei-GT2-v0.3.0.zip.
-2) Otvori Android Studio > File > Open > odaberi folder SnoreGuard.
-3) Potvrdi Trust Project i sačekaj Gradle Sync.
-4) Ako Studio pita za Android SDK 35, instaliraj ga kroz SDK Manager.
-5) Prvi build automatski preuzima YAMNet (~4 MB) i Gradle 8.11.1.
-   Ako download ne uspe: proveri internet i ponovi Sync/Build.
+PODESI HUAWEI GT 2
+1) Huawei Health -> Devices -> Huawei GT 2 -> Notifications -> SnoreGuard ON.
+2) Proveri Bluetooth i jacinu vibracije. DND/Sleep moze blokirati obavestenja.
+3) Pokreni Test jaceg alarma ×3 i zadrzi aplikaciju otvorenu tokom 32 sekunde.
+4) Tri obavestenja se salju na 0, 16. i 32. sekundi. Sat sam odlucuje
+   da li ce vibrirati, posebno dok korisnik spava.
 
-B. INSTALIRAJ NA TELEFON
-1) Telefon > Settings > About phone > više puta dodirni verziju OS-a da uključiš Developer options.
-2) Settings > Developer options > USB debugging: ON.
-3) Poveži telefon USB kablom, potvrdi "Allow USB debugging".
-4) U Android Studio izaberi telefon pri vrhu i klikni Run (zeleni trougao).
-5) Alternativa: Build > Build APK(s). APK je u app/build/outputs/apk/debug/app-debug.apk.
-   Otvori ga na telefonu i odobri instalaciju iz pouzdanog izvora ako sistem zatraži.
-6) Otvori SnoreGuard i dozvoli mikrofon i obaveštenja.
+NOCNO PRAĆENJE
+1) Posle 22:00 pritisni Pokreni nocno pracenje i dozvoli mikrofon.
+2) Telefon postavi blizu kreveta, bez prekrivanja mikrofona.
+3) YAMNet procenjuje 975 ms zvuka svakih 250 ms.
+4) DVA ODVOJENA hrkaja u roku od 15 sekundi pokrecu jednu seriju.
+   Preklopljeni prozori istog udaha NE broje se kao vise hrkaja.
+5) Normalni kratki izdisaj ne otkazuje automatski seriju.
+   Ako vise od 20 s nije prepoznat zvuk hrkanja, ostatak serije se otkazuje.
+   Pauza izmedju pocetaka dve serije je 60 s.
+6) SnoreGuard automatski zaustavlja pracenje u 08:00.
+7) Ujutru pogledaj prepoznate pojedinacne hrkaje, serije alarma,
+   poslate notifikacije i eventualnu poruku o gresci.
 
-C. TEST HUAWEI GT 2 (MOŽE TOKOM DANA)
-1) Huawei Health > Devices > Huawei Watch GT 2 > Notifications.
-2) Uključi obaveštenja za "SnoreGuard" (nekad se pojavi tek nakon prvog test obaveštenja).
-3) Na GT2 privremeno isključi Do Not Disturb; proveri da sat stoji na ruci.
-4) U SnoreGuard prvo pritisni "Test obaveštenja → Huawei GT 2".
-5) Pritisni "Test jačeg alarma ×3" i ostavi ekran aplikacije otvoren 16 sekundi.
-6) Proveri da li se pojavljuju tri NOVA obaveštenja, na 0, 8. i 16. sekundi.
-   Sat može da vibrira 0–3 puta: Huawei Health nije pod direktnom kontrolom aplikacije.
-7) Ako se samo prikazuje, a ne vibrira: uključi "Vibracija i na telefonu" i ponovi test.
-8) Ako i tada nema vibracije: proveri jačinu vibracije na GT2, Huawei Health, 
-   restrikcije baterije za Health i SnoreGuard i stanje Sleep/DND na GT2.
+TUMACENJE
+- Hrkanja >0, serije 0: AI nije prepoznao DVA odvojena hrkaja u 15 s.
+- Serije >0, obavestenja 0: aktiviran je detektor, ali slanje nije uspelo.
+- Obavestenja >0, sat nije vibrirao: proveri Huawei Health i DND/Sleep.
+- Starija istorija koristi stariji nacin brojanja epizoda; ne poredi
+  procenu trajanja izmedju verzija direktno.
 
-D. STVARNO PRAĆENJE
-1) Posle 22:00 otvori SnoreGuard i pritisni "Pokreni noćno praćenje".
-2) Pored uzglavlja postavi telefon mikrofonom ka krevetu (puni bateriju ako je moguće).
-3) Tokom noći ostaje sistemsko obaveštenje "SnoreGuard prati zvuk tokom noći".
-4) Posle približno 5 sekundi detekcije šalje do tri upozorenja (0/8/16 s).
-   Ako hrkanje prestane tokom serije, ostatak se otkazuje. Nova serija može tek posle 60 s.
-5) Samo od 22:00 do 08:00; u 08:00 se servis zaustavlja. U svakom času možeš ručno zaustaviti.
-6) Ujutru pogledaj broj epizoda, procenjeno trajanje, broj serija i broj poslatih obaveštenja.
-
-E. OGRANIČENJA
-- GT2 NE podržava našu Wear OS aplikaciju; signal ide kroz prosleđena Android obaveštenja.
-- GT2 može potisnuti vibraciju automatski tokom prepoznatog sna ili DND-a.
-  Dnevni test nije garancija da će tokom noći zaista vibrirati.
-- Telefon možda mora da ima optimizaciju baterije isključenu za SnoreGuard / Huawei Health.
-- Model YAMNet nije specijalno treniran samo za hrkanje: lažne detekcije su moguće.
-- Aplikacija nije medicinski uređaj, ne postavlja dijagnozu apneje.
-- NEMA audio snimaka na disku, cloudu ni serveru. Android aplikacija nema INTERNET dozvolu.
-- ZIP nema već kompajliran APK; build treba izvršiti na računaru sa Android SDK-om.
-
-F. NAPOMENE ZA v0.3
-- Ponovljena obaveštenja ne garantuju ponovljenu vibraciju Huawei GT 2.
-- Jačina motora sata se podešava na satu, ne u SnoreGuard aplikaciji.
-- Nocno iskljucivanje Vibera / WhatsAppa nije implementirano u ovom projektu.
+ANDROID STUDIO
+Potreban JDK 17 i Android SDK 35:
+  ./gradlew testDebugUnitTest assembleDebug
+Prvi build moze preuzeti YAMNet TFLite model.
+Aplikacija nema dozvolu za internet i ne cuva audio.
+Nije medicinski uredjaj ni dijagnostika apneje.

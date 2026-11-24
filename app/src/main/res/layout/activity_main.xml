@@ -50,7 +50,10 @@
             <TextView android:layout_width="match_parent" android:layout_height="wrap_content"
                 android:text="Osetljivost     HIGH" android:textColor="@color/text_primary" android:textStyle="bold" android:textSize="15sp" />
             <TextView android:layout_width="match_parent" android:layout_height="wrap_content"
-                android:layout_marginTop="8dp" android:text="Potvrda hrkanja     oko 5 sekundi" android:textColor="@color/text_secondary" android:textSize="14sp" />
+                android:layout_marginTop="8dp" android:text="Alarm     2 odvojena hrkaja u 15 sekundi" android:textColor="@color/text_secondary" android:textSize="14sp" />
+            <TextView android:layout_width="match_parent" android:layout_height="wrap_content"
+                android:layout_marginTop="7dp" android:text="AI analiza     na svakih 250 ms"
+                android:textColor="@color/text_secondary" android:textSize="14sp" />
             <TextView android:layout_width="match_parent" android:layout_height="wrap_content"
                 android:layout_marginTop="7dp" android:text="Jači alarm     3 obaveštenja (0 / 16 / 32 s)"
                 android:textColor="@color/text_secondary" android:textSize="14sp" />

@@ -14,6 +14,10 @@ class SessionStore(context: Context) {
             .put("start", System.currentTimeMillis())
             .put("end", 0L)
             .put("snoreFrames", 0)
+            // New sessions sample overlapping 975 ms windows every 250 ms.
+            // Old history without hopMs still uses its original 975 ms unit.
+            .put("hopMs", 250)
+            .put("detectorVersion", "breaths_v1")
             .put("episodes", 0)
             .put("alerts", 0)
             .put("notifications", 0)

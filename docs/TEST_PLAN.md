@@ -1,39 +1,30 @@
-# Test plan — SnoreGuard v0.3.0 / Huawei Watch GT 2
+# Test plan — SnoreGuard v0.3.3 / GT 2
 
-## 1. Build/test gates
-- `./gradlew assembleDebug`
-- `./gradlew testDebugUnitTest`
-- `./gradlew lintDebug`
-- Debug APK instaliran na fizičkom Android telefonu; mikrofon se testira samo uz jasnu dozvolu.
+## Build and unit tests
+- [ ] ./gradlew testDebugUnitTest assembleDebug succeeds (JDK 17 / SDK 35)
+- [ ] Two separated positive audio groups within 15 s start one alarm series
+- [ ] Overlapping 250 ms windows do not double-count one continuous positive group
+- [ ] Positive groups >15 s apart do not start an alarm
+- [ ] Cooldown remains 60 s
+- [ ] Sliding 15,600-sample PCM window retains 11,600 overlapping samples
+- [ ] Installed version visible as v0.3.3 · build 33
+- [ ] Old sessions retain legacy hop size / episodes interpretation
 
-## 2. Huawei GT 2 (obavezno fizičko testiranje)
-- [ ] U Huawei Health uključiti SnoreGuard Notifications.
-- [ ] Tihi "Test GT 2" stiže na sat i izaziva vibraciju (ako ne, probati režim vibracije telefona).
-- [ ] Pritisnuti "Test jačeg alarma ×3", potvrditi 3 nova obaveštenja na 0, 8. i 16. sekundi (odvojeni notification ID-ovi).
-- [ ] Proveriti koliko puta Huawei GT 2 vibrira (ne pretpostavljati da tri obaveštenja znače tri vibracije).
-- [ ] Tokom stvarne detekcije prekinuti hrkanje nakon prve vibracije; druga i treća treba da budu otkazane nakon nekoliko negativnih klasifikacionih blokova.
-- [ ] Ponovljeni alarm ne sme početi pre isteka 60 sekundi od prethodne serije.
-- [ ] Zabeležiti da li GT 2 vibrira sa uključenim i isključenim Sleep/DND režimom.
-- [ ] Proveriti kada je sat na ruci tokom STVARNOG sna (bez insistiranja na buđenju korisnika).
-- [ ] Android telefon ostaje bez zvuka; proveriti da li je vibracija telefona zaista ugašena.
+## Real device: Xiaomi 14T + Huawei GT 2
+- [ ] Confirm 4,000 new PCM samples each ~250 ms on real microphone
+- [ ] Test isolated short snore: one event, no alarm
+- [ ] Test two separated short snores within 15 s: one alarm
+- [ ] Test normal exhalation: no premature cancellation of future vibration
+- [ ] Stop recognizing snoring for >20 s: remaining alerts canceled
+- [ ] Confirm phone notifications at 0/16/32 s during burst
+- [ ] Confirm three GT 2 vibrations in daytime (already worked in v0.3.2)
+- [ ] Confirm real sleep behavior: Huawei Sleep/DND may suppress notifications
+- [ ] Test with screen off, Bluetooth connected and HyperOS battery optimization
+- [ ] Check CPU usage, battery drain and overheating: 4x more TFLite evaluations
+- [ ] Evaluate false positives with TV, speech, fan and household noise
 
-## 3. Noćni režim
-- [ ] Pre 22:00 dugme start odbija sesiju; test obaveštenja radi.
-- [ ] Od 22:00 startuje mikrofon uz foreground obaveštenje.
-- [ ] Posle 08:00 servis prestaje, sesija se pojavljuje u istoriji.
-- [ ] Lock screen / ugašen ekran ne prekida servis.
-- [ ] Ručni STOP i STOP na sistemskom obaveštenju uredno oslobađaju mikrofon.
-
-## 4. Audio i privatnost
-- [ ] Nema mrežne (INTERNET) dozvole.
-- [ ] Nema audio fajlova, samo zbirne metrike.
-- [ ] Model u `app/build/generated/yamnetAssets/yamnet.tflite` je preuzet (~4 MB).
-- [ ] AudioRecord 16 kHz mono radi na ciljnom telefonu.
-- [ ] Tišina ne izaziva alarm; testirati zvuke ventilatora, govora, TV-a, stvarnog hrkanja.
-- [ ] Proveriti lažno pozitivne i lažno negativne slučajeve.
-- [ ] Produženi test 2–3 noći radi kalibracije HIGH praga (0.07).
-
-## 5. Očekivana ograničenja
-- Android/Huawei može izmeniti ponašanje notifikacija i vibracija.
-- Dok detekcija hrkanja nije validirana na stvarnim podacima, skor je probni.
-- Nije alat za detekciju respiratornog zastoja ili lečenje apneje.
+## Privacy and limitations
+- [ ] No raw audio stored and no INTERNET permission
+- [ ] Night service only starts by user action between 22:00 and 08:00
+- [ ] Recording stops on STOP or after 08:00
+- [ ] Not a medical apnea monitor or validated treatment

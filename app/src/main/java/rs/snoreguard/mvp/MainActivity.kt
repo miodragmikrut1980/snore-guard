@@ -219,8 +219,10 @@ class MainActivity : Activity() {
         }
         val begin = item.optLong("start")
         sessionTime.text = (if (active) "Aktivno od " else "Poslednja sesija ") + dateFormat.format(Date(begin))
-        episodeStats.text = "Epizode hrkanja: ${item.optInt("episodes")}"
-        val seconds = (item.optInt("snoreFrames") * 0.975).toInt()
+        val newDetector = item.optString("detectorVersion") == "breaths_v1"
+        val episodeTitle = if (newDetector) "Prepoznati pojedinačni hrkaji" else "Epizode hrkanja (stara detekcija)"
+        episodeStats.text = "$episodeTitle: ${item.optInt("episodes")}"
+        val seconds = (item.optInt("snoreFrames").toLong() * item.optInt("hopMs", 975) / 1_000L).toInt()
         snoreStats.text = "Procenjeno hrkanje: ${seconds / 60} min ${seconds % 60} s"
         alertStats.text = "Serije alarma: ${item.optInt("alerts")} • Obaveštenja: ${item.optInt("notifications", item.optInt("alerts"))}"
     }
@@ -235,8 +237,9 @@ class MainActivity : Activity() {
         for (index in 0 until minOf(7, records.length())) {
             val item = records.optJSONObject(index) ?: continue
             val date = dateFormat.format(Date(item.optLong("start")))
-            val mins = (item.optInt("snoreFrames") * 0.975 / 60.0).toInt()
-            rows.add("$date  •  $mins min  •  ${item.optInt("episodes")} ep.  •  ${item.optInt("alerts")} serija  •  ${item.optInt("notifications", item.optInt("alerts"))} obav.")
+            val mins = (item.optInt("snoreFrames").toLong() * item.optInt("hopMs", 975) / 60_000L).toInt()
+            val episodeUnit = if (item.optString("detectorVersion") == "breaths_v1") "hrkaja" else "ep."
+            rows.add("$date  •  $mins min  •  ${item.optInt("episodes")} $episodeUnit  •  ${item.optInt("alerts")} serija  •  ${item.optInt("notifications", item.optInt("alerts"))} obav.")
         }
         history.text = rows.joinToString("\n\n")
     }
