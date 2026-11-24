@@ -57,18 +57,27 @@ The first stable release signing key has NOT been configured yet. No claim of
 stable upgrades is valid until you safely configure it and verify a signed
 APK from this workflow.
 
-## Migration from installed debug APK
+## Migration from an installed debug APK
 
-1. In the existing app, stop monitoring.
+**Important for v0.7.0 and older:** these versions DO NOT have the new ZIP
+export option. First use their JSON statistics export, save each WAV through
+the share button, and export the clip-review CSV. Verify every file outside
+the application BEFORE uninstalling. JSON can be imported in v0.7.1, but the
+older individually shared WAVs/clip-review CSV cannot yet be imported back
+into app storage automatically. Keep those original WAVs safely for your
+doctor and do not uninstall the older app until you have what you need.
+
+**If you can install v0.7.1 without removing the app:**
+1. Stop monitoring in v0.7.1.
 2. Use Export kompletne kopije (ZIP), and confirm the ZIP contains
    manifest.json and statistics.json plus clips/*.wav if you saved audio.
-3. Keep the ZIP privately outside of the app; it contains unencrypted audio.
-4. Only once you have verified the backup, uninstall your old debug APK if
-   Android refuses to install the new signed APK as an update.
-5. Install the signed release and choose Import kompletne kopije (ZIP).
-6. Verify the session counts, WAV playback, clip labels and notes.
-7. Future signed releases can upgrade in place when they use the same package
-   ID, same signing certificate, and increasing version code.
+3. Keep the ZIP privately outside the app; it contains unencrypted audio.
+4. Only once you have verified the backup, uninstall the incompatible debug
+   APK if Android refuses to update to a differently signed release.
+5. Install the first signed release and choose Import kompletne kopije (ZIP).
+6. Verify history, WAV playback, clip labels and notes.
+7. Future signed releases can update in place with the same package ID,
+   same signing certificate and a higher versionCode.
 
 Full ZIP import supports up to 365 historical sessions and up to 40 WAVs.
 It does not overwrite local WAVs: when there are not enough free slots, clips
