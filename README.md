@@ -1,8 +1,10 @@
 # SnoreGuard MVP — Android + Huawei Watch GT 2
 
 **Status:** kompletan izvorni Android Studio projekat (MVP, ne medicinski uređaj).  
-**Verzija:** 0.3.0 • Kotlin • Android 8+ (API 26+) • target API 35.  
+**Verzija:** 0.3.1 • Kotlin • Android 8+ (API 26+) • target API 35.  
 **Postavke:** HIGH prag YAMNet Snoring `0.07`, približno 5 sekundi potvrde, tri odvojena obaveštenja na 0, 8. i 16. sekundi (dok se hrkanje nastavlja), 60 sekundi između početaka serija, 22:00–08:00.
+
+**Novo v0.3.1:** prikaz stvarno instalirane verzije i build broja odmah na vrhu početnog ekrana (preuzeto iz Android PackageManager-a, nije hardkodirano). Ostale funkcije iz v0.3.0 su nepromenjene.
 
 **Novo v0.3.0:** jači alarm kao niz **tri nova Android obaveštenja** na 0/8/16 sekundi, ručni test serije (i van noćnog termina), zaustavljanje preostalih obaveštenja ako detekcija prestane, i brojanje serija naspram obaveštenja. Zadržani su HIGH, lokalna analiza zvuka, noćni prozor i cooldown od 60 s.
 
@@ -73,7 +75,7 @@ U ZIP-u je **transparentni minimalni bootstrap JAR**, sa sopstvenim Java izvorni
 
 Ovo je hobi/prototip aplikacija za podsticaj promene položaja. **Ne meri prestanak disanja, kiseonik, ni kvalitet sna kliničkom preciznošću**. Visok prag osetljivosti može dovesti do lažnih upozorenja; govor druge osobe, TV ili zvukovi iz sobe mogu zbuniti model. Ako postoji glasno hrkanje sa pauzama u disanju, gušenjem ili dnevnom pospanošću, posavetuj se sa lekarom oko procene apneje.
 
-## GitHub / v0.3.0
+## GitHub / v0.3.1
 
 Objavljuju se izvorni fajlovi, **bez** generisanog APK-a i bez YAMNet modela (model se preuzima prilikom build-a). `CHANGELOG.md` opisuje novosti, a `docs/TEST_PLAN.md` daje test matrice. GitHub nije izvor automatskog ažuriranja instalirane aplikacije; novu verziju treba izgraditi i instalirati.
 

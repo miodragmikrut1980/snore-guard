@@ -48,6 +48,16 @@ class MainActivity : Activity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_main)
+        // Show the version installed on THIS phone, never a manually hard-coded label.
+        val installedPackage = packageManager.getPackageInfo(packageName, 0)
+        val installedVersion = installedPackage.versionName ?: "?"
+        val installedBuild = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
+            installedPackage.longVersionCode
+        } else {
+            @Suppress("DEPRECATION")
+            installedPackage.versionCode.toLong()
+        }
+        findViewById<TextView>(R.id.versionText).text = "v$installedVersion · build $installedBuild"
         store = SessionStore(this)
         settings = Settings(this)
         if (!MonitorService.isActive) store.recoverInterrupted()
