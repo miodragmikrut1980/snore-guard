@@ -1,5 +1,17 @@
 # Changelog
 
+## v0.6.0 — Optional short WAV recordings, flexible hours and anytime microphone test
+- Explicit opt-in for 3s pre-roll + 9s post-roll WAV excerpt recording after two distinct snoring events.
+- Private on-device 16 kHz mono PCM storage; at most 10 clips per night, at least 20 min between starts and 40 total.
+- Play, share via Android FileProvider and delete individual WAV clips or all clips after confirmation.
+- Configure local allowed monitoring start/end via time picker (cross-midnight, daytime and 24-hour windows supported).
+- Auto-stop when the allowed monitoring window ends; **do not** silently auto-start background mic services.
+- 90-second live snoring detection test at any time, with own in-app status; test recordings do not pollute saved night history.
+- Persist custom interval in JSON settings backup and capture events across all 24 possible clock hours.
+- Add deterministic custom-schedule, time-label and WAV header tests.
+- Preserve all legacy snore detection and GT 2 notification behaviour unless user changes settings.
+- Audio clips excluded from JSON backup. Sleep-apnea diagnosis is not provided.
+
 ## v0.5.0 — Night timelines, comparisons and local backup
 - Persist per-hour recognized distinct snore events for each new session (22:00–08:00).
 - Graph one session by hour and compare up to seven completed nights with matching detector semantics.

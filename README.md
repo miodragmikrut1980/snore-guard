@@ -1,6 +1,27 @@
 # SnoreGuard — Android + Huawei Watch GT 2
 
-**Current version: 0.5.0 (build 50).** Android 8+; Kotlin; local offline YAMNet.
+**Current version: 0.6.0 (build 60).** Android 8+; Kotlin; local offline YAMNet.
+
+## New in v0.6.0
+
+### Optional snore audio for discussion with a doctor
+
+- A **separate, OFF-by-default switch** enables saving short snippets of actual sound. An explicit confirmation warns that sleeping partners' voices may also be captured; obtain their consent.
+- Uses the existing local microphone stream, with **no second microphone session** and no audio sent to a server.
+- When AI recognizes **two separate snoring events within 15 seconds**, it saves a WAV excerpt with approximately 3 seconds of pre-roll and 9 seconds after the alert; actual duration can be shorter when stopping early.
+- Saves **up to 10 excerpts per monitoring session**, at least 20 minutes between excerpt starts, and retains **at most 40 excerpts on the device** (oldest are pruned after the limit).
+- Local **16 kHz mono 16-bit PCM WAV** files are stored in a private app folder. Tap a saved excerpt to play it, share it using Android's share chooser (e.g. with a doctor), or delete it. Delete-all requires explicit confirmation. Audio snippets are **not** included in the JSON statistics backup.
+- Short excerpts are **not an apnea diagnosis or substitute for a sleep study**. Detection can miss snoring or capture unrelated sounds, and the snippets may contain other private room audio.
+
+### Configurable monitoring interval, plus anytime test
+
+- Choose **start and end times** from Android time pickers; defaults are 22:00–08:00. Windows may cross midnight or be during the day. Equal start/end means 24 hours.
+- Tap **Start monitoring** while the app is visible and within that window. Monitoring **stops automatically** when the window ends, or if the user stops it. Editing start/end during an active session takes effect on the next start.
+- **Automatic background microphone start at the configured time is not supported**, because Android 14+ restricts starting microphone foreground services from the background. Schedule settings set the allowed window and automatic stop, not an automatic start.
+- Tap **Testiraj prepoznavanje hrkanja (90 s)** **at any time**, regardless of window. It uses the same microphone and AI detection algorithm and shows live result counters, including alerts. The test stops automatically after 90 seconds. It does not save WAV excerpts or add a completed night to history.
+- Original simple **single notification test** and **GT 2 burst test** remain available. When Android notifications are disabled, the live detector test can still run, but watch alerts may not be shown.
+- Saved hourly charts can now show detected snore events in a **custom time window**, and CSV has hourly columns for all 24 hours.
+- The JSON backup also preserves configured start and end times, but **not the recording switch**, which intentionally resets to off on a fresh install.
 
 ## New in v0.5.0
 
@@ -44,8 +65,8 @@ This is an **experimental heuristic**. It can still miss snores or respond to ot
 ## Usage and notifications
 
 1. Pair GT 2 with Huawei Health, enable SnoreGuard notifications.
-2. Start monitoring manually in SnoreGuard during **22:00–08:00** (foreground microphone service).
-3. The app analyzes local mono PCM audio; there is no network permission or stored audio recording.
+2. Start monitoring **manually** in SnoreGuard during your configured window (default **22:00–08:00**) using a foreground microphone service. The test can start at any time.
+3. The app analyzes local mono PCM audio; it has no network permission. Audio is never stored unless you explicitly enable short WAV excerpt saving.
 4. Open the app in the morning to check **recognized individual snores**, **alarm series**, and **emitted notifications**. These are distinct measures.
 5. Test the 3-notification burst in daytime with the Test button; the GT 2 may still suppress notifications during Sleep/DND.
 

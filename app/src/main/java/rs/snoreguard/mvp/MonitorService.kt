@@ -34,17 +34,27 @@ class MonitorService : Service() {
     private var activeSensitivity = Sensitivity.HIGH
     private var activeMode = AlertMode.STRONG
     @Volatile private var stoppedByUser = false
+    private lateinit var clipStore: SnoreClipStore
+    private var sessionTesting = false
+    private var testStartedElapsed = 0L
+    private var activeWindowStart = LocalTime.of(22, 0)
+    private var activeWindowEnd = LocalTime.of(8, 0)
+    private var saveClips = false
+
+    private fun allowedNow(): Boolean =
+        if (sessionTesting) SystemClock.elapsedRealtime() - testStartedElapsed < TEST_DURATION_MS
+        else NightWindow.isNight(LocalTime.now(), activeWindowStart, activeWindowEnd)
 
     private fun newBurst(mode: AlertMode) = AlarmBurst(
         scheduler = BurstScheduler { delay, action -> mainHandler.postDelayed({ action() }, delay) },
         canContinue = {
-            recording && NightWindow.isNight(LocalTime.now()) &&
+            recording && allowedNow() &&
                 lastPositiveRealtime >= 0L &&
                 SystemClock.elapsedRealtime() - lastPositiveRealtime <= burstQuietTimeoutMillis
         },
         emit = { step ->
             try {
-                AlertNotifier.sendWatchAlert(this, test = false, step = step, totalSteps = mode.steps)
+                AlertNotifier.sendWatchAlert(this, test = sessionTesting, step = step, totalSteps = mode.steps)
                 store.incrementNotifications()
             } catch (e: Exception) {
                 store.fail("Upozorenje nije poslato: ${e.message}")
@@ -58,6 +68,7 @@ class MonitorService : Service() {
     override fun onCreate() {
         super.onCreate()
         store = SessionStore(this)
+        clipStore = SnoreClipStore(this)
         alertBurst = newBurst(AlertMode.STRONG)
     }
 
@@ -66,16 +77,22 @@ class MonitorService : Service() {
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
         when (intent?.action) {
             ACTION_STOP -> requestStop()
-            ACTION_START -> startMonitor()
+            ACTION_START -> startMonitor(false)
+            ACTION_TEST -> startMonitor(true)
             else -> stopSelf()
         }
         return START_NOT_STICKY
     }
 
-    private fun startMonitor() {
-        if (recording) return
-        if (!NightWindow.isNight(LocalTime.now())) {
-            store.fail("Praćenje je dozvoljeno samo između 22:00 i 08:00.")
+    private fun startMonitor(test: Boolean) {
+        if (recording || isActive) return
+        val preferences = Settings(this)
+        val start = preferences.windowStart()
+        val end = preferences.windowEnd()
+        if (!test && !NightWindow.isNight(LocalTime.now(), start, end)) {
+            store.fail("Praćenje je dozvoljeno samo u izabranom intervalu " +
+                Settings.timeLabel(preferences.windowStartMinutes) + "–" +
+                Settings.timeLabel(preferences.windowEndMinutes) + ".")
             stopSelf()
             return
         }
@@ -84,40 +101,48 @@ class MonitorService : Service() {
             stopSelf()
             return
         }
+        sessionTesting = test
+        activeWindowStart = start
+        activeWindowEnd = end
+        testStartedElapsed = SystemClock.elapsedRealtime()
         try {
             AlertNotifier.ensureChannels(this)
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
                 startForeground(AlertNotifier.ONGOING_NOTIFICATION,
-                    AlertNotifier.monitorNotification(this),
+                    AlertNotifier.monitorNotification(this, testing = sessionTesting),
                     ServiceInfo.FOREGROUND_SERVICE_TYPE_MICROPHONE)
             } else {
-                startForeground(AlertNotifier.ONGOING_NOTIFICATION, AlertNotifier.monitorNotification(this))
+                startForeground(AlertNotifier.ONGOING_NOTIFICATION, AlertNotifier.monitorNotification(this, testing = sessionTesting))
             }
         } catch (e: Exception) {
             store.fail("Nije moguće započeti praćenje: ${e.message}")
             stopSelf()
             return
         }
-        val preferences = Settings(this)
         activeSensitivity = preferences.sensitivity
         activeMode = preferences.alertMode
+        saveClips = preferences.saveSnoreClips && !test
         stoppedByUser = false
         alertBurst = newBurst(activeMode)
         store.recoverInterrupted()
-        store.begin(activeSensitivity, activeMode)
+        store.begin(activeSensitivity, activeMode,
+            preferences.windowStartMinutes, preferences.windowEndMinutes, isTest = sessionTesting)
         lastPositiveRealtime = -1L
         recording = true
         isActive = true
+        isTestSession = sessionTesting
         worker = Thread({ recordLoop() }, "SnoreGuardAudio").apply { start() }
     }
 
     private fun recordLoop() {
         val engine = SnoreEngine(cooldownMillis = 60_000L)
         var classifier: YamnetSnoreDetector? = null
+        var clipCapture: SnoreClipCapture? = null
         var lastScore = 0f
-        var finishReason = "Noćni režim završen"
+        var finishReason = if (sessionTesting) "Test je završen" else "Izabrani interval je završen"
         try {
             classifier = YamnetSnoreDetector(this)
+            clipCapture = SnoreClipCapture(clipStore, saveClips) { message -> store.fail(message) }
             val minBytes = AudioRecord.getMinBufferSize(SAMPLE_RATE,
                 AudioFormat.CHANNEL_IN_MONO, AudioFormat.ENCODING_PCM_16BIT)
             check(minBytes > 0) { "Telefon ne podržava mikrofon na 16 kHz" }
@@ -153,7 +178,7 @@ class MonitorService : Service() {
             val audioStartElapsed = SystemClock.elapsedRealtime()
             var sampleTimeMs = 975L
             var firstFrame = true
-            while (recording && NightWindow.isNight(LocalTime.now())) {
+            while (recording && allowedNow()) {
                 val offset: Int
                 val count: Int
                 if (firstFrame) {
@@ -178,6 +203,9 @@ class MonitorService : Service() {
                 }
                 if (!recording || filled < count) break
                 firstFrame = false
+                // Only NEW audio samples enter the recording buffer; overlapping
+                // 975 ms analysis frames must never duplicate the WAV waveform.
+                clipCapture.accept(rolling.samples, offset, count)
 
                 lastScore = classifier.classify(rolling.samples)
                 val snore = lastScore >= activeSensitivity.modelThreshold
@@ -188,7 +216,7 @@ class MonitorService : Service() {
                 val beforeEvents = engine.episodes
                 val alert = engine.process(
                     isSnore = snore,
-                    mayAlert = NightWindow.isNight(LocalTime.now()),
+                    mayAlert = allowedNow(),
                     elapsedMillis = audioStartElapsed + sampleTimeMs
                 )
                 if (engine.episodes > beforeEvents) {
@@ -196,6 +224,7 @@ class MonitorService : Service() {
                     store.recordSnoreAt(System.currentTimeMillis())
                 }
                 if (alert) {
+                    clipCapture.trigger()
                     store.update(engine, lastScore, modelActive = true)
                     mainHandler.post { if (recording) alertBurst.start() }
                 }
@@ -210,6 +239,9 @@ class MonitorService : Service() {
         } finally {
             recording = false
             mainHandler.post { alertBurst.cancel() }
+            try { clipCapture?.close() } catch (e: Exception) {
+                store.fail("Snimanje isečka je prekinuto: " + (e.message ?: "greška"))
+            }
             try { recorder?.stop() } catch (_: Exception) { }
             try { recorder?.release() } catch (_: Exception) { }
             recorder = null
@@ -219,6 +251,7 @@ class MonitorService : Service() {
             store.update(engine, lastScore, modelActive = classifier != null)
             store.finish(if (stoppedByUser) "Ručno zaustavljeno" else finishReason)
             isActive = false
+            isTestSession = false
             stopForeground(STOP_FOREGROUND_REMOVE)
             stopSelf()
         }
@@ -242,10 +275,14 @@ class MonitorService : Service() {
     companion object {
         const val ACTION_START = "rs.snoreguard.mvp.START"
         const val ACTION_STOP = "rs.snoreguard.mvp.STOP"
+        const val ACTION_TEST = "rs.snoreguard.mvp.TEST"
+        const val TEST_DURATION_MS = 90_000L
         private const val SAMPLE_RATE = 16000
         private const val HOP_SAMPLES = 4_000
         private const val WINDOW_HOP_MS = 250L
         @Volatile var isActive: Boolean = false
+            private set
+        @Volatile var isTestSession: Boolean = false
             private set
     }
 }

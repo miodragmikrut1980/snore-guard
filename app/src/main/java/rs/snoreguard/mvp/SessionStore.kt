@@ -14,7 +14,13 @@ class SessionStore(context: Context) {
     private val prefs = context.getSharedPreferences("snoreguard_sessions", Context.MODE_PRIVATE)
     private val lock = Any()
 
-    fun begin(sensitivity: Sensitivity = Sensitivity.HIGH, mode: AlertMode = AlertMode.STRONG) = synchronized(lock) {
+    fun begin(
+        sensitivity: Sensitivity = Sensitivity.HIGH,
+        mode: AlertMode = AlertMode.STRONG,
+        windowStart: Int = 22 * 60,
+        windowEnd: Int = 8 * 60,
+        isTest: Boolean = false
+    ) = synchronized(lock) {
         val active = JSONObject()
             .put("start", System.currentTimeMillis())
             .put("end", 0L)
@@ -31,6 +37,9 @@ class SessionStore(context: Context) {
             .put("stopReason", "")
             .put("timelineVersion", 1)
             .put("hourly", JSONObject())
+            .put("windowStart", windowStart)
+            .put("windowEnd", windowEnd)
+            .put("isTest", isTest)
             .put("episodes", 0)
             .put("alerts", 0)
             .put("notifications", 0)
@@ -59,7 +68,6 @@ class SessionStore(context: Context) {
         val active = activeOrNull() ?: return@synchronized
         val hour = Calendar.getInstance().apply { timeInMillis = timestampMillis }
             .get(Calendar.HOUR_OF_DAY)
-        if (NightHours.indexOf(hour) < 0) return@synchronized
         val histogram = active.optJSONObject("hourly") ?: JSONObject()
         val key = String.format(Locale.ROOT, "%02d", hour)
         histogram.put(key, histogram.optInt(key, 0) + 1)
@@ -82,6 +90,10 @@ class SessionStore(context: Context) {
         val active = activeOrNull() ?: return@synchronized
         active.put("end", System.currentTimeMillis())
             .put("stopReason", reason)
+        if (active.optBoolean("isTest", false)) {
+            prefs.edit().remove("active").commit()
+            return@synchronized
+        }
         val history = safeArray(prefs.getString("history", "[]"))
         val merged = JSONArray()
         merged.put(active)
@@ -116,7 +128,9 @@ class SessionStore(context: Context) {
             .put("settings", JSONObject()
                 .put("sensitivity", settings.sensitivity.name)
                 .put("alertMode", settings.alertMode.name)
-                .put("phoneVibration", settings.phoneVibration))
+                .put("phoneVibration", settings.phoneVibration)
+                .put("windowStart", settings.windowStartMinutes)
+                .put("windowEnd", settings.windowEndMinutes))
             .toString(2)
     }
 
@@ -162,6 +176,11 @@ class SessionStore(context: Context) {
         val preferences = root.optJSONObject("settings")
         val sensitivityName = preferences?.optString("sensitivity")
         val modeName = preferences?.optString("alertMode")
+        val startMinutes = preferences?.optInt("windowStart", 22 * 60) ?: 22 * 60
+        val endMinutes = preferences?.optInt("windowEnd", 8 * 60) ?: 8 * 60
+        require(startMinutes in 0..1439 && endMinutes in 0..1439) {
+            "Neispravno vreme u rezervnoj kopiji."
+        }
         require(sensitivityName == null || Sensitivity.values().any { it.name == sensitivityName }) {
             "Nepoznata osetljivost u kopiji."
         }
@@ -196,6 +215,8 @@ class SessionStore(context: Context) {
             val settings = Settings(appContext)
             if (sensitivityName != null) settings.sensitivity = Sensitivity.fromStored(sensitivityName)
             if (modeName != null) settings.alertMode = AlertMode.fromStored(modeName)
+            if (preferences.has("windowStart")) settings.windowStartMinutes = startMinutes
+            if (preferences.has("windowEnd")) settings.windowEndMinutes = endMinutes
             if (preferences.has("phoneVibration")) {
                 settings.phoneVibration = preferences.optBoolean("phoneVibration")
             }
@@ -208,7 +229,7 @@ class SessionStore(context: Context) {
             "start_local", "end_local", "detector_version", "sensitivity",
             "recognized_events", "alarm_series", "posted_notifications",
             "estimated_snoring_seconds", "stop_reason"
-        ) + NightHours.labels().map { "hour_${it}_events" }
+        ) + NightHours.allLabels().map { "hour_${it}_events" }
         val text = StringBuilder().append(CsvCell.row(columns)).append("\r\n")
         val format = SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ssXXX", Locale.ROOT)
         val records = history()
@@ -228,7 +249,7 @@ class SessionStore(context: Context) {
                 item.optInt("notifications").toString(),
                 seconds.toString(),
                 item.optString("stopReason")
-            ) + NightHours.labels().map { hour ->
+            ) + NightHours.allLabels().map { hour ->
                 if (hist == null) "" else hist.optInt(hour, 0).toString()
             }
             text.append(CsvCell.row(values)).append("\r\n")

@@ -3,6 +3,11 @@ package rs.snoreguard.mvp
 import android.Manifest
 import android.app.Activity
 import android.app.AlertDialog
+import android.app.TimePickerDialog
+import android.content.ClipData
+import android.media.MediaPlayer
+import android.widget.LinearLayout
+import androidx.core.content.FileProvider
 import android.app.NotificationManager
 import android.net.Uri
 import android.os.PowerManager
@@ -53,6 +58,14 @@ class MainActivity : Activity() {
     private lateinit var hourlyDetails: TextView
     private lateinit var comparisonDetails: TextView
     private lateinit var exportStatus: TextView
+    private lateinit var clipStore: SnoreClipStore
+    private lateinit var clipList: LinearLayout
+    private lateinit var clipCountText: TextView
+    private lateinit var recordingDescription: TextView
+    private lateinit var snoreTestButton: Button
+    private lateinit var snoreTestStatus: TextView
+    private var player: MediaPlayer? = null
+    private var lastClipSignature = ""
     private val handler = Handler(Looper.getMainLooper())
     private var pendingAction: String? = null
     private val dateFormat = SimpleDateFormat("dd.MM. HH:mm", Locale.forLanguageTag("sr-RS"))
@@ -78,6 +91,7 @@ class MainActivity : Activity() {
         findViewById<TextView>(R.id.versionText).text = "v$installedVersion · build $installedBuild"
         store = SessionStore(this)
         settings = Settings(this)
+        clipStore = SnoreClipStore(this)
         if (!MonitorService.isActive) store.recoverInterrupted()
         AlertNotifier.ensureChannels(this)
 
@@ -100,6 +114,36 @@ class MainActivity : Activity() {
         hourlyDetails = findViewById(R.id.hourlyDetails)
         comparisonDetails = findViewById(R.id.comparisonDetails)
         exportStatus = findViewById(R.id.exportStatus)
+        clipList = findViewById(R.id.clipList)
+        clipCountText = findViewById(R.id.clipCountText)
+        recordingDescription = findViewById(R.id.recordingDescription)
+        snoreTestButton = findViewById(R.id.snoreTestButton)
+        snoreTestStatus = findViewById(R.id.snoreTestStatus)
+        setupRecordingAndTimeControls()
+        snoreTestButton.setOnClickListener {
+            if (MonitorService.isActive) {
+                toast("Zaustavi trenutno praćenje pre pokretanja testa.")
+            } else {
+                requirePermissionsThen("snore_test")
+            }
+        }
+        findViewById<Button>(R.id.deleteAllClipsButton).setOnClickListener {
+            if (MonitorService.isActive) {
+                toast("Zaustavi praćenje pre brisanja snimaka.")
+            } else {
+                AlertDialog.Builder(this)
+                    .setTitle("Obriši sve zvučne snimke?")
+                    .setMessage("Ova radnja trajno briše sve WAV snimke iz aplikacije.")
+                    .setNegativeButton("Otkaži", null)
+                    .setPositiveButton("Obriši") { _, _ ->
+                        stopPlayback()
+                        if (clipStore.deleteAll()) {
+                            lastClipSignature = ""
+                            showSavedClips()
+                        } else toast("Brisanje nije uspelo.")
+                    }.show()
+            }
+        }
         findViewById<Button>(R.id.exportCsvButton).setOnClickListener {
             createDocument("text/csv", "SnoreGuard-statistika.csv", REQUEST_EXPORT_CSV)
         }
@@ -158,10 +202,12 @@ class MainActivity : Activity() {
 
     private fun requirePermissionsThen(action: String) {
         val missing = mutableListOf<String>()
-        if (action == "start" && checkSelfPermission(Manifest.permission.RECORD_AUDIO) != PackageManager.PERMISSION_GRANTED) {
+        if ((action == "start" || action == "snore_test") &&
+            checkSelfPermission(Manifest.permission.RECORD_AUDIO) != PackageManager.PERMISSION_GRANTED) {
             missing.add(Manifest.permission.RECORD_AUDIO)
         }
-        if (Build.VERSION.SDK_INT >= 33 &&
+        // Detection test must run even if the user has notifications disabled.
+        if (action != "snore_test" && Build.VERSION.SDK_INT >= 33 &&
             checkSelfPermission(Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED) {
             missing.add(Manifest.permission.POST_NOTIFICATIONS)
         }
@@ -197,19 +243,25 @@ class MainActivity : Activity() {
             }
             return
         }
-        if (action == "start") {
-            if (!NightWindow.isNight(LocalTime.now())) {
-                toast("Noćni režim: praćenje može da počne od 22:00 do 08:00.")
+        if (action == "start" || action == "snore_test") {
+            val isTest = action == "snore_test"
+            if (!isTest && !NightWindow.isNight(
+                    LocalTime.now(), settings.windowStart(), settings.windowEnd())) {
+                toast("Praćenje je dostupno samo u izabranom intervalu " +
+                    Settings.timeLabel(settings.windowStartMinutes) + "–" +
+                    Settings.timeLabel(settings.windowEndMinutes) + ".")
                 return
             }
             val manager = getSystemService(android.app.NotificationManager::class.java)
-            if (!manager.areNotificationsEnabled()) {
+            if (!isTest && !manager.areNotificationsEnabled()) {
                 toast("Obaveštenja moraju biti uključena za GT 2 alarm.")
                 return
             }
             try {
-                startForegroundService(Intent(this, MonitorService::class.java).setAction(MonitorService.ACTION_START))
-                toast("Pokrećem lokalno praćenje hrkanja.")
+                startForegroundService(Intent(this, MonitorService::class.java).setAction(
+                    if (isTest) MonitorService.ACTION_TEST else MonitorService.ACTION_START))
+                toast(if (isTest) "Pokrećem 90-sekundni test prepoznavanja hrkanja."
+                      else "Pokrećem lokalno praćenje hrkanja.")
             } catch (ex: Exception) {
                 toast("Praćenje nije pokrenuto: ${ex.message}")
             }
@@ -234,15 +286,24 @@ class MainActivity : Activity() {
 
     private fun refresh() {
         val running = MonitorService.isActive
-        startStop.text = if (running) "Zaustavi praćenje" else "Pokreni noćno praćenje"
-        status.text = if (running) "● Praćenje je aktivno" else "● Praćenje nije aktivno"
-        description.text = if (running) {
-            if (NightWindow.isNight(LocalTime.now())) {
-                "AI analizira mikrofon; alarmi su dozvoljeni do 08:00."
-            } else {
-                "Noćni prozor je završen; praćenje se automatski zaustavlja."
-            }
-        } else "Pokreni praćenje pre spavanja. Test sata radi u bilo koje vreme."
+        val testing = running && MonitorService.isTestSession
+        startStop.text = if (running) "Zaustavi praćenje" else "Pokreni praćenje"
+        status.text = when {
+            testing -> "● Test prepoznavanja hrkanja je aktivan"
+            running -> "● Praćenje je aktivno"
+            else -> "● Praćenje nije aktivno"
+        }
+        snoreTestButton.isEnabled = !running
+        snoreTestStatus.text = if (testing) {
+            "Test traje najviše 90 sekundi. Probaj da simuliraš hrkanje. " +
+                "Isečci i noćna istorija se ne čuvaju."
+        } else "Test prepoznavanja radi kada god želiš, nezavisno od izabranog vremena."
+        description.text = if (testing) {
+            "AI proverava mikrofon i prepoznavanje hrkanja u probnom režimu."
+        } else if (running) {
+            "AI radi do " + Settings.timeLabel(settings.windowEndMinutes) +
+                ". Promene rasporeda važe pri sledećem pokretanju."
+        } else "Ručno pokreni praćenje tokom izabranog intervala. Test može bilo kada."
 
         val active = store.active()
         val latest = active ?: store.history().optJSONObject(0)
@@ -257,6 +318,7 @@ class MainActivity : Activity() {
         showDiagnostics(latest, active != null)
         showHistory()
         showCharts(latest)
+        showSavedClips()
         errors.text = store.error()
     }
 
@@ -298,7 +360,10 @@ class MainActivity : Activity() {
 
     private fun showCharts(latest: JSONObject?) {
         val hourly = latest?.optJSONObject("hourly")
-        val labels = NightHours.labels()
+        val labels = NightHours.labelsForWindow(
+            latest?.optInt("windowStart", 22 * 60) ?: 22 * 60,
+            latest?.optInt("windowEnd", 8 * 60) ?: 8 * 60
+        )
         hourlyChart.showSeries(labels, labels.map { hourly?.optInt(it, 0) ?: 0 }, hourly != null)
         hourlyDetails.text = if (hourly == null) {
             "Satna statistika postoji tek za sesije snimljene verzijom v0.5.0 i novijom."
@@ -396,6 +461,7 @@ class MainActivity : Activity() {
                                 exportStatus.text = "✓ Uvezeno $imported novih sesija."
                                 settings = Settings(this)
                                 setupProfileControls()
+                                updateWindowButtons()
                                 findViewById<Switch>(R.id.phoneVibrationSwitch).isChecked =
                                     settings.phoneVibration
                                 refresh()
@@ -409,6 +475,147 @@ class MainActivity : Activity() {
         } catch (error: Exception) {
             exportStatus.text = "✗ Operacija nije uspela: ${error.message}"
         }
+    }
+
+    private fun setupRecordingAndTimeControls() {
+        val startButton = findViewById<Button>(R.id.setStartTimeButton)
+        val endButton = findViewById<Button>(R.id.setEndTimeButton)
+        startButton.setOnClickListener { chooseTime(true) }
+        endButton.setOnClickListener { chooseTime(false) }
+        val toggle = findViewById<Switch>(R.id.saveClipsSwitch)
+        toggle.isChecked = settings.saveSnoreClips
+        toggle.setOnCheckedChangeListener { _, enabled ->
+            if (enabled && !settings.saveSnoreClips) {
+                AlertDialog.Builder(this)
+                    .setTitle("Uključi snimanje hrkanja?")
+                    .setMessage("SnoreGuard će lokalno sačuvati kratke WAV isečke " +
+                        "kada AI potvrdi ponovljeno hrkanje (do 10 po sesiji, " +
+                        "40 ukupno). Snimci mogu sadržati razgovore ili druge osobe " +
+                        "u sobi. Ne šalju se automatski nikome. " +
+                        "Uključuj snimanje samo uz saglasnost prisutnih.")
+                    .setNegativeButton("Ne") { _, _ -> toggle.isChecked = false }
+                    .setPositiveButton("Uključi") { _, _ ->
+                        settings.saveSnoreClips = true
+                        updateRecordingDescription()
+                    }.show()
+            } else if (!enabled) {
+                settings.saveSnoreClips = false
+                updateRecordingDescription()
+            }
+        }
+        updateWindowButtons()
+        updateRecordingDescription()
+    }
+
+    private fun chooseTime(start: Boolean) {
+        val original = if (start) settings.windowStartMinutes else settings.windowEndMinutes
+        TimePickerDialog(this, { _, hour, minute ->
+            if (start) settings.windowStartMinutes = hour * 60 + minute
+            else settings.windowEndMinutes = hour * 60 + minute
+            updateWindowButtons()
+        }, original / 60, original % 60, true).show()
+    }
+
+    private fun updateWindowButtons() {
+        findViewById<Button>(R.id.setStartTimeButton).text =
+            "Početak: " + Settings.timeLabel(settings.windowStartMinutes)
+        findViewById<Button>(R.id.setEndTimeButton).text =
+            "Kraj: " + Settings.timeLabel(settings.windowEndMinutes)
+        findViewById<TextView>(R.id.windowDescription).text =
+            "Praćenje se pokreće ručno i automatski staje na kraju intervala. " +
+                "Ako su vremena ista, interval traje 24 h. " +
+                "Promene tokom rada važe narednim pokretanjem."
+    }
+
+    private fun updateRecordingDescription() {
+        recordingDescription.text = if (settings.saveSnoreClips) {
+            "✓ Čuvanje WAV snimaka uključeno. Radi u sledećoj noćnoj sesiji."
+        } else "Čuvanje zvuka je isključeno. Raniji snimci ostaju do brisanja."
+    }
+
+    private fun stopPlayback() {
+        val old = player
+        player = null
+        if (old != null) try { old.release() } catch (_: Exception) {}
+    }
+
+    private fun showSavedClips() {
+        val clips = clipStore.list()
+        clipCountText.text = if (clips.isEmpty()) {
+            "Nema snimaka. Uključi opciju čuvanja zvuka pre noćnog praćenja."
+        } else "Sačuvano: ${clips.size} WAV snimaka. Dodirni za preslušavanje ili deljenje."
+        val signature = clips.joinToString("|") { it.filename }
+        if (signature == lastClipSignature) return
+        lastClipSignature = signature
+        clipList.removeAllViews()
+        val format = SimpleDateFormat("dd.MM.yyyy HH:mm:ss", Locale.forLanguageTag("sr-RS"))
+        for (clip in clips.take(40)) {
+            val button = Button(this).apply {
+                text = format.format(Date(clip.recordedAt)) + "  •  " +
+                    (clip.durationMs / 1000) + " s  •  WAV"
+                isAllCaps = false
+                setTextColor(getColor(R.color.text_primary))
+                setOnClickListener { chooseClipAction(clip) }
+            }
+            clipList.addView(button)
+        }
+    }
+
+    private fun chooseClipAction(clip: SnoreClip) {
+        AlertDialog.Builder(this)
+            .setTitle("Snimak hrkanja")
+            .setMessage("Trajanje: " + (clip.durationMs / 1000) +
+                " s. Sadrži stvarni zvuk iz sobe i može biti osetljiv.")
+            .setItems(arrayOf("Preslušaj", "Podeli WAV sa lekarom", "Obriši")) { _, which ->
+                val file = clipStore.fileFor(clip.filename)
+                if (file == null) {
+                    toast("Snimak nije dostupan.")
+                    return@setItems
+                }
+                when (which) {
+                    0 -> try {
+                        stopPlayback()
+                        val current = MediaPlayer()
+                        current.setDataSource(file.absolutePath)
+                        current.prepare()
+                        current.setOnCompletionListener { stopPlayback() }
+                        player = current
+                        current.start()
+                        toast("Reprodukcija snimka je pokrenuta.")
+                    } catch (error: Exception) {
+                        stopPlayback()
+                        toast("Ne može da se pusti snimak: " + error.message)
+                    }
+                    1 -> try {
+                        val uri = FileProvider.getUriForFile(
+                            this, packageName + ".files", file)
+                        val send = Intent(Intent.ACTION_SEND).apply {
+                            type = "audio/wav"
+                            putExtra(Intent.EXTRA_STREAM, uri)
+                            clipData = ClipData.newUri(contentResolver, "SnoreGuard WAV", uri)
+                            addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+                        }
+                        startActivity(Intent.createChooser(send, "Podeli WAV snimak"))
+                    } catch (error: Exception) {
+                        toast("Deljenje nije uspelo: " + error.message)
+                    }
+                    2 -> if (MonitorService.isActive) {
+                        toast("Zaustavi praćenje pre brisanja snimka.")
+                    } else {
+                        AlertDialog.Builder(this)
+                            .setTitle("Trajno obriši snimak?")
+                            .setNegativeButton("Otkaži", null)
+                            .setPositiveButton("Obriši") { _, _ ->
+                                stopPlayback()
+                                if (!clipStore.delete(clip.filename)) {
+                                    toast("Brisanje nije uspelo.")
+                                }
+                                lastClipSignature = ""
+                                showSavedClips()
+                            }.show()
+                    }
+                }
+            }.show()
     }
 
     private fun showHistory() {
@@ -509,11 +716,17 @@ class MainActivity : Activity() {
         } else {
             "⚠ Štednja baterije može prekinuti praćenje — proveri podešavanja"
         }
-        lines += if (NightWindow.isNight(LocalTime.now())) {
-            "✓ U noćnom periodu 22:00–08:00"
+        val hours = Settings.timeLabel(settings.windowStartMinutes) + "–" +
+            Settings.timeLabel(settings.windowEndMinutes)
+        lines += if (NightWindow.isNight(LocalTime.now(),
+                settings.windowStart(), settings.windowEnd())) {
+            "✓ Sada je unutar izabranog intervala $hours"
         } else {
-            "ℹ Praćenje se pokreće samo 22:00–08:00"
+            "ℹ Praćenje se pokreće ručno u intervalu $hours"
         }
+        lines += if (settings.saveSnoreClips) {
+            "ℹ Snimanje kratkih WAV isečaka je uključeno."
+        } else "✓ Čuvanje zvuka je isključeno."
         lines += "ℹ Na GT 2 ručno proveri Huawei Health, Bluetooth i režim Ne uznemiravaj."
         return lines.joinToString("\n")
     }
@@ -526,6 +739,7 @@ class MainActivity : Activity() {
 
     override fun onPause() {
         handler.removeCallbacks(updater)
+        stopPlayback()
         super.onPause()
     }
 

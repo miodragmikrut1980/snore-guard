@@ -83,6 +83,38 @@
         </LinearLayout>
 
         <TextView android:layout_width="match_parent" android:layout_height="wrap_content"
+            android:layout_marginTop="24dp" android:text="VREME PRAĆENJA I SNIMANJE"
+            android:letterSpacing="0.10" android:fontFamily="sans-serif-medium"
+            android:textSize="12sp" android:textColor="@color/text_secondary" />
+        <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content"
+            android:layout_marginTop="9dp" android:background="@drawable/bg_card" android:padding="18dp"
+            android:orientation="vertical">
+            <Button android:id="@+id/setStartTimeButton" android:layout_width="match_parent"
+                android:layout_height="50dp" android:text="Početak: 22:00"
+                android:textAllCaps="false" android:textColor="@color/text_primary"
+                android:background="@drawable/bg_secondary" />
+            <Button android:id="@+id/setEndTimeButton" android:layout_width="match_parent"
+                android:layout_height="50dp" android:layout_marginTop="8dp"
+                android:text="Kraj: 08:00" android:textAllCaps="false"
+                android:textColor="@color/text_primary" android:background="@drawable/bg_secondary" />
+            <TextView android:id="@+id/windowDescription" android:layout_width="match_parent"
+                android:layout_height="wrap_content" android:layout_marginTop="8dp"
+                android:text="Izaberi raspored. Praćenje se pokreće ručno i zaustavlja na kraju intervala."
+                android:textSize="12sp" android:textColor="@color/text_secondary" />
+            <Switch android:id="@+id/saveClipsSwitch" android:layout_width="match_parent"
+                android:layout_height="wrap_content" android:layout_marginTop="16dp"
+                android:text="Sačuvaj kratke snimke hrkanja"
+                android:textSize="14sp" android:textColor="@color/text_primary" android:checked="false" />
+            <TextView android:layout_width="match_parent" android:layout_height="wrap_content"
+                android:layout_marginTop="8dp" android:textSize="12sp"
+                android:text="Privatno, isključeno po defaultu. Samo potvrđeni događaji: do 10 WAV isečaka po sesiji, približno 12 s, najviše 40 ukupno. Snimci mogu sadržati i glasove ljudi pored tebe. Uz saglasnost osoba u prostoriji."
+                android:textColor="@color/text_secondary" />
+            <TextView android:id="@+id/recordingDescription" android:layout_width="match_parent"
+                android:layout_height="wrap_content" android:layout_marginTop="8dp"
+                android:text="Snimanje zvuka nije uključeno."
+                android:textSize="12sp" android:textColor="@color/warning" />
+        </LinearLayout>
+        <TextView android:layout_width="match_parent" android:layout_height="wrap_content"
             android:layout_marginTop="24dp" android:text="PROVERA PRE SPAVANJA" android:letterSpacing="0.10"
             android:fontFamily="sans-serif-medium" android:textSize="12sp" android:textColor="@color/text_secondary" />
         <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content"
@@ -118,6 +150,15 @@
             android:layout_height="wrap_content" android:layout_marginTop="7dp"
             android:text="Test ×3 (0/16/32 s) radi i tokom dana. Ostavi aplikaciju otvorenu."
             android:textColor="@color/text_secondary" android:textSize="12sp" />
+        <Button android:id="@+id/snoreTestButton" android:layout_width="match_parent"
+            android:layout_height="54dp" android:layout_marginTop="14dp"
+            android:text="Testiraj prepoznavanje hrkanja (90 s)"
+            android:textAllCaps="false" android:textStyle="bold"
+            android:textColor="@color/button_text" android:background="@drawable/bg_primary" />
+        <TextView android:id="@+id/snoreTestStatus" android:layout_width="match_parent"
+            android:layout_height="wrap_content" android:layout_marginTop="8dp"
+            android:text="Test mikrofona i AI hrkanja radi u bilo koje doba dana. Ne čuva snimke ni noćnu istoriju."
+            android:textSize="12sp" android:textColor="@color/text_secondary" />
         <TextView android:layout_width="match_parent" android:layout_height="wrap_content"
             android:layout_marginTop="26dp" android:text="OVO PRAĆENJE" android:letterSpacing="0.10"
             android:fontFamily="sans-serif-medium" android:textSize="12sp" android:textColor="@color/text_secondary" />
@@ -172,6 +213,28 @@
                 android:contentDescription="Grafikon prepoznatih hrkanja tokom poslednjih sedam noći" />
         </LinearLayout>
 
+        <TextView android:layout_width="match_parent" android:layout_height="wrap_content"
+            android:layout_marginTop="26dp" android:text="ZVUČNI SNIMCI ZA LEKARA"
+            android:letterSpacing="0.10" android:fontFamily="sans-serif-medium"
+            android:textSize="12sp" android:textColor="@color/text_secondary" />
+        <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content"
+            android:layout_marginTop="9dp" android:background="@drawable/bg_card"
+            android:padding="16dp" android:orientation="vertical">
+            <TextView android:id="@+id/clipCountText" android:layout_width="match_parent"
+                android:layout_height="wrap_content" android:text="Nema sačuvanih snimaka."
+                android:textSize="13sp" android:textColor="@color/text_secondary" />
+            <LinearLayout android:id="@+id/clipList" android:layout_width="match_parent"
+                android:layout_height="wrap_content" android:orientation="vertical"
+                android:layout_marginTop="8dp" />
+            <Button android:id="@+id/deleteAllClipsButton" android:layout_width="match_parent"
+                android:layout_height="50dp" android:layout_marginTop="12dp"
+                android:text="Obriši sve zvučne snimke" android:textAllCaps="false"
+                android:textColor="@color/text_primary" android:background="@drawable/bg_secondary" />
+            <TextView android:layout_width="match_parent" android:layout_height="wrap_content"
+                android:layout_marginTop="8dp" android:textSize="12sp"
+                android:text="Dodirni snimak da ga poslušaš, podeliš kao WAV ili obrišeš. Snimanje ne dijagnostikuje apneju."
+                android:textColor="@color/text_secondary" />
+        </LinearLayout>
         <TextView android:layout_width="match_parent" android:layout_height="wrap_content"
             android:layout_marginTop="26dp" android:text="IZVOZ I REZERVNA KOPIJA" android:letterSpacing="0.10"
             android:fontFamily="sans-serif-medium" android:textSize="12sp" android:textColor="@color/text_secondary" />

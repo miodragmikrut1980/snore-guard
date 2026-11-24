@@ -36,7 +36,7 @@ object AlertNotifier {
         nm.createNotificationChannel(vibrate)
     }
 
-    fun monitorNotification(context: Context): Notification {
+    fun monitorNotification(context: Context, testing: Boolean = false): Notification {
         val intent = PendingIntent.getActivity(context, 0,
             Intent(context, MainActivity::class.java),
             PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT)
@@ -45,8 +45,10 @@ object AlertNotifier {
             PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT)
         return Notification.Builder(context, MONITOR_CHANNEL)
             .setSmallIcon(R.drawable.ic_status)
-            .setContentTitle("SnoreGuard prati zvuk tokom noći")
-            .setContentText("Mikrofon je aktivan. Dodirni za statistiku.")
+            .setContentTitle(if (testing) "SnoreGuard testira prepoznavanje hrkanja"
+                else "SnoreGuard prati hrkanje")
+            .setContentText(if (testing) "Test traje 90 sekundi; zvuk se ne čuva."
+                else "Mikrofon radi; WAV isečci se čuvaju samo ako si uključio snimanje.")
             .setContentIntent(intent)
             .setOngoing(true)
             .setCategory(Notification.CATEGORY_SERVICE)

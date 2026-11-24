@@ -15,8 +15,8 @@ android {
         applicationId = "rs.snoreguard.mvp"
         minSdk = 26
         targetSdk = 35
-        versionCode = 50
-        versionName = "0.5.0"
+        versionCode = 60
+        versionName = "0.6.0"
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
     buildTypes {
@@ -72,5 +72,6 @@ tasks.named("preBuild").configure { dependsOn(downloadYamnet) }
 
 dependencies {
     implementation("org.tensorflow:tensorflow-lite:2.17.0")
+    implementation("androidx.core:core:1.15.0")
     testImplementation("junit:junit:4.13.2")
 }
