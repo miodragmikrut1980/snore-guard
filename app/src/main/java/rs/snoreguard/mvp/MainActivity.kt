@@ -513,7 +513,7 @@ class MainActivity : Activity() {
             else -> "Započete serije: ${r.started} • procenjene: ${r.assessed}\n" +
                 "Smirilo se: ${r.quiet} • vratilo se: ${r.returned} • nastavilo se: ${r.continued}\n" +
                 "Nepouzdano: ${r.inconclusive} • u toku: ${r.pending}\n" +
-                "Smart režim: zaustavljeno dodatnih serija ${r.smartSuppressed}.\n" +
+                "Smart režim: serije sa preskočenim nastavkom ${r.smartSuppressed}.\n" +
                 "Smirivanje: 10 s bez detekcije u prvih 30 s; posmatranje ukupno 60 s. " +
                 "Ovo ne potvrđuje vibraciju sata niti njen efekat."
         }
@@ -687,6 +687,7 @@ class MainActivity : Activity() {
                                 settings = Settings(this)
                                 setupProfileControls()
                                 updateWindowButtons()
+                                findViewById<Switch>(R.id.smartFollowupsSwitch).isChecked = settings.smartFollowups
                                 findViewById<Switch>(R.id.phoneVibrationSwitch).isChecked =
                                     settings.phoneVibration
                                 refresh()

@@ -59,7 +59,7 @@ class AlertResponseTracker(private val clock: () -> Long) {
         val now = clock()
         val w = window ?: return false
         if (closed || w.invalid || !freshAt(now) || w.quietSince == null ||
-            now - w.quietSince!! < QUIET_MS || now - w.start >= OBSERVE_MS) return false
+            (lastFrame ?: return false) - w.quietSince!! < QUIET_MS || now - w.start >= OBSERVE_MS) return false
         counts = counts.copy(smartSuppressed = counts.smartSuppressed + 1)
         return true
     }

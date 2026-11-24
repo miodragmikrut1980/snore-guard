@@ -98,6 +98,17 @@ class AlarmBurstTest {
         timer.advanceTo(64_000L)
         assertEquals(listOf(1, 2, 3, 1, 2, 3), events)
     }
+    @Test fun optionalStepGateKeepsFirstAndCancelsRemaining() {
+        val timer = VirtualTimer()
+        val emitted = mutableListOf<Int>()
+        val burst = AlarmBurst(timer, { true }, canDeliverStep = { it == 1 }) { emitted.add(it) }
+        assertTrue(burst.start())
+        timer.advanceTo(40_000)
+        assertEquals(listOf(1), emitted)
+        assertFalse(burst.isRunning)
+        assertTrue(burst.start())
+        assertEquals(listOf(1, 1), emitted)
+    }
     @Test fun exceptionStopsAdditionalNotifications() {
         val timer = VirtualTimer()
         var called = 0
