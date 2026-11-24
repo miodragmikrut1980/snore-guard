@@ -1,5 +1,12 @@
 # Changelog
 
+## v0.6.2 — Start/stop detection test using the same button
+- In the 90-second snore detection test, the original button changes to **Zaustavi test hrkanja**.
+- Tapping it requests the existing microphone foreground service STOP action and shows **Zaustavljam test…**.
+- Once stopped, the button returns to **Testiraj prepoznavanje hrkanja (90 s)**.
+- The test button remains unavailable during normal night monitoring to prevent inadvertently stopping that session.
+- Preserves all prior recording, stats import/export, watch notification and manual test functionality.
+
 ## v0.6.1 — Clearly labeled statistics export/import
 - Move the data transfer panel to just below the current monitoring statistics; label JSON export/import and CSV spreadsheet export separately.
 - JSON export includes completed sessions and settings. JSON import verifies input, deduplicates, merges and restores preferences on confirmation.

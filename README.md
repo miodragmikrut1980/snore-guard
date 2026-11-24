@@ -1,6 +1,13 @@
 # SnoreGuard — Android + Huawei Watch GT 2
 
-**Current version: 0.6.1 (build 61).** Android 8+; Kotlin; local offline YAMNet.
+**Current version: 0.6.2 (build 62).** Android 8+; Kotlin; local offline YAMNet.
+
+## New in v0.6.2
+
+- The 90-second **Testiraj prepoznavanje hrkanja** button now becomes **Zaustavi test hrkanja** while the detection test is running, without scrolling to the top of the screen.
+- Tapping that button immediately sends the existing safe monitoring-stop action to the microphone service; a short **Zaustavljam test…** state prevents repeat requests while the service closes.
+- Once monitoring ends, the original test label and enabled state return. While normal night monitoring runs, the button remains disabled and does not stop the main session accidentally.
+- No changes to detection thresholds, actual snore WAV saving, data export/import or Huawei GT 2 alert intervals.
 
 ## New in v0.6.1
 

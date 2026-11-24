@@ -64,6 +64,7 @@ class MainActivity : Activity() {
     private lateinit var recordingDescription: TextView
     private lateinit var snoreTestButton: Button
     private lateinit var snoreTestStatus: TextView
+    private var testStopRequested = false
     private var player: MediaPlayer? = null
     private var lastClipSignature = ""
     private val handler = Handler(Looper.getMainLooper())
@@ -121,10 +122,20 @@ class MainActivity : Activity() {
         snoreTestStatus = findViewById(R.id.snoreTestStatus)
         setupRecordingAndTimeControls()
         snoreTestButton.setOnClickListener {
-            if (MonitorService.isActive) {
-                toast("Zaustavi trenutno praćenje pre pokretanja testa.")
-            } else {
-                requirePermissionsThen("snore_test")
+            when {
+                MonitorService.isActive && MonitorService.isTestSession -> {
+                    if (!testStopRequested) {
+                        testStopRequested = true
+                        snoreTestButton.isEnabled = false
+                        snoreTestButton.text = "Zaustavljam test…"
+                        snoreTestStatus.text = "Zaustavljanje testa je zatraženo."
+                        startService(Intent(this, MonitorService::class.java)
+                            .setAction(MonitorService.ACTION_STOP))
+                    }
+                }
+                MonitorService.isActive -> toast(
+                    "Noćno praćenje je aktivno. Zaustavi ga na dugme 'Zaustavi praćenje'.")
+                else -> requirePermissionsThen("snore_test")
             }
         }
         findViewById<Button>(R.id.deleteAllClipsButton).setOnClickListener {
@@ -298,11 +309,20 @@ class MainActivity : Activity() {
             running -> "● Praćenje je aktivno"
             else -> "● Praćenje nije aktivno"
         }
-        snoreTestButton.isEnabled = !running
-        snoreTestStatus.text = if (testing) {
-            "Test traje najviše 90 sekundi. Probaj da simuliraš hrkanje. " +
-                "Isečci i noćna istorija se ne čuvaju."
-        } else "Test prepoznavanja radi kada god želiš, nezavisno od izabranog vremena."
+        if (!running) testStopRequested = false
+        snoreTestButton.isEnabled = !running || (testing && !testStopRequested)
+        snoreTestButton.text = when {
+            testing && testStopRequested -> "Zaustavljam test…"
+            testing -> "Zaustavi test hrkanja"
+            else -> "Testiraj prepoznavanje hrkanja (90 s)"
+        }
+        snoreTestStatus.text = when {
+            testing && testStopRequested -> "Zaustavljam test…"
+            testing -> "Test traje najviše 90 sekundi. Probaj da simuliraš hrkanje. " +
+                "Dodirni isto dugme da ga prekineš. Snimci i noćna istorija se ne čuvaju."
+            running -> "Noćno praćenje je aktivno. Test možeš pokrenuti nakon zaustavljanja."
+            else -> "Test prepoznavanja radi kada god želiš, nezavisno od izabranog vremena."
+        }
         description.text = if (testing) {
             "AI proverava mikrofon i prepoznavanje hrkanja u probnom režimu."
         } else if (running) {
