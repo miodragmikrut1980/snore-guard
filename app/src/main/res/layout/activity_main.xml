@@ -51,15 +51,25 @@
             android:layout_marginTop="9dp" android:background="@drawable/bg_card" android:padding="18dp"
             android:orientation="vertical">
             <TextView android:layout_width="match_parent" android:layout_height="wrap_content"
-                android:text="Osetljivost     HIGH" android:textColor="@color/text_primary" android:textStyle="bold" android:textSize="15sp" />
+                android:text="Osetljivost AI detekcije" android:textColor="@color/text_primary" android:textStyle="bold" android:textSize="15sp" />
+            <Spinner android:id="@+id/sensitivitySpinner" android:layout_width="match_parent"
+                android:layout_height="48dp" android:layout_marginTop="4dp" />
+            <TextView android:layout_width="match_parent" android:layout_height="wrap_content"
+                android:text="Prag utiče na lažne alarme. Nije medicinski kalibrisan."
+                android:textSize="12sp" android:textColor="@color/text_secondary" />
             <TextView android:layout_width="match_parent" android:layout_height="wrap_content"
                 android:layout_marginTop="8dp" android:text="Alarm     2 odvojena hrkaja u 15 sekundi" android:textColor="@color/text_secondary" android:textSize="14sp" />
             <TextView android:layout_width="match_parent" android:layout_height="wrap_content"
                 android:layout_marginTop="7dp" android:text="AI analiza     na svakih 250 ms"
                 android:textColor="@color/text_secondary" android:textSize="14sp" />
             <TextView android:layout_width="match_parent" android:layout_height="wrap_content"
-                android:layout_marginTop="7dp" android:text="Jači alarm     3 obaveštenja (0 / 16 / 32 s)"
-                android:textColor="@color/text_secondary" android:textSize="14sp" />
+                android:layout_marginTop="12dp" android:text="Režim alarma na satu"
+                android:textColor="@color/text_primary" android:textStyle="bold" android:textSize="15sp" />
+            <Spinner android:id="@+id/alertModeSpinner" android:layout_width="match_parent"
+                android:layout_height="48dp" android:layout_marginTop="4dp" />
+            <TextView android:layout_width="match_parent" android:layout_height="wrap_content"
+                android:text="Sledeće upozorenje stiže nakon 16 s. Uslovi noćnog alarma ostaju isti."
+                android:textSize="12sp" android:textColor="@color/text_secondary" />
             <TextView android:layout_width="match_parent" android:layout_height="wrap_content"
                 android:layout_marginTop="7dp" android:text="Pauza između serija     60 sekundi" android:textColor="@color/text_secondary" android:textSize="14sp" />
             <TextView android:layout_width="match_parent" android:layout_height="wrap_content"
@@ -70,6 +80,29 @@
             <TextView android:layout_width="match_parent" android:layout_height="wrap_content"
                 android:text="Isključi ako želiš samo sat. Huawei Health može da odlučuje nezavisno od telefona."
                 android:layout_marginTop="5dp" android:textSize="12sp" android:textColor="@color/text_secondary" />
+        </LinearLayout>
+
+        <TextView android:layout_width="match_parent" android:layout_height="wrap_content"
+            android:layout_marginTop="24dp" android:text="PROVERA PRE SPAVANJA" android:letterSpacing="0.10"
+            android:fontFamily="sans-serif-medium" android:textSize="12sp" android:textColor="@color/text_secondary" />
+        <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content"
+            android:layout_marginTop="9dp" android:background="@drawable/bg_card" android:padding="18dp"
+            android:orientation="vertical">
+            <Button android:id="@+id/readinessButton" android:layout_width="match_parent"
+                android:layout_height="50dp" android:text="Proveri spremnost" android:textAllCaps="false"
+                android:textColor="@color/button_text" android:background="@drawable/bg_primary" />
+            <TextView android:id="@+id/readinessStatus" android:layout_width="match_parent"
+                android:layout_height="wrap_content" android:layout_marginTop="12dp"
+                android:text="Proveri dozvole i režim štednje baterije pre spavanja."
+                android:textSize="13sp" android:textColor="@color/text_secondary" />
+            <Button android:id="@+id/appSettingsButton" android:layout_width="match_parent"
+                android:layout_height="wrap_content" android:layout_marginTop="10dp"
+                android:text="Dozvole i obaveštenja" android:textAllCaps="false"
+                android:textColor="@color/text_primary" android:background="@drawable/bg_secondary" />
+            <Button android:id="@+id/batterySettingsButton" android:layout_width="match_parent"
+                android:layout_height="wrap_content" android:layout_marginTop="8dp"
+                android:text="Podešavanja baterije" android:textAllCaps="false"
+                android:textColor="@color/text_primary" android:background="@drawable/bg_secondary" />
         </LinearLayout>
 
         <Button android:id="@+id/testButton" android:layout_width="match_parent" android:layout_height="52dp"
@@ -104,6 +137,10 @@
                 android:textColor="@color/text_primary" android:textSize="16sp" />
         </LinearLayout>
 
+        <TextView android:id="@+id/diagnosticsText" android:layout_width="match_parent"
+            android:layout_height="wrap_content" android:layout_marginTop="13dp"
+            android:text="Dijagnostika će biti prikazana tokom praćenja."
+            android:textColor="@color/text_secondary" android:textSize="12sp" />
         <TextView android:layout_width="match_parent" android:layout_height="wrap_content"
             android:layout_marginTop="26dp" android:text="PRETHODNE NOĆI" android:letterSpacing="0.10"
             android:fontFamily="sans-serif-medium" android:textSize="12sp" android:textColor="@color/text_secondary" />

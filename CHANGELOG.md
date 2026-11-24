@@ -1,5 +1,13 @@
 # Changelog
 
+## v0.4.0 — Configurable AI and night readiness
+- Three persistent sensitivity profiles, keeping previous HIGH threshold by default.
+- Gentle (1), Normal (2) and Strong (3) separate GT 2 notification series.
+- Ready-for-bed checklist and quick links to application and battery settings.
+- Frame heartbeat diagnostics, chosen threshold and reason for stopping a session.
+- Additional unit tests for profile fallback and configurable alert bursts.
+- No change in core offline YAMNet detection or medical claims.
+
 ## v0.3.4 — Selected SnoreGuard app logo
 - Add approved sleeping pillow/face + green shield branding to Android launcher and app home header.
 - Use `mipmap-nodpi/ic_launcher.webp` converted from the selected light-background icon.

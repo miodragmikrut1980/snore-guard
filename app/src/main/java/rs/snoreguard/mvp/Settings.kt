@@ -9,8 +9,15 @@ class Settings(context: Context) {
         get() = prefs.getBoolean("phone_vibration", false)
         set(value) { prefs.edit().putBoolean("phone_vibration", value).apply() }
 
+    var sensitivity: Sensitivity
+        get() = Sensitivity.fromStored(prefs.getString("sensitivity", null))
+        set(value) { prefs.edit().putString("sensitivity", value.name).apply() }
+
+    var alertMode: AlertMode
+        get() = AlertMode.fromStored(prefs.getString("alert_mode", null))
+        set(value) { prefs.edit().putString("alert_mode", value.name).apply() }
+
     companion object {
-        const val MODEL_THRESHOLD = 0.07f // HIGH sensitivity; must be calibrated on real recordings.
         const val MIN_RMS = 0.0025f // Suppress near-silence only.
     }
 }

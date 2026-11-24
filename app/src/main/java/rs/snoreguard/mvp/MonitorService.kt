@@ -30,7 +30,12 @@ class MonitorService : Service() {
     // Short quiet gaps are normal between inhalations. Do not cancel after a
     // single exhale; stop later burst steps after prolonged silence instead.
     private val burstQuietTimeoutMillis = 20_000L
-    private val alertBurst = AlarmBurst(
+    private lateinit var alertBurst: AlarmBurst
+    private var activeSensitivity = Sensitivity.HIGH
+    private var activeMode = AlertMode.STRONG
+    @Volatile private var stoppedByUser = false
+
+    private fun newBurst(mode: AlertMode) = AlarmBurst(
         scheduler = BurstScheduler { delay, action -> mainHandler.postDelayed({ action() }, delay) },
         canContinue = {
             recording && NightWindow.isNight(LocalTime.now()) &&
@@ -39,18 +44,21 @@ class MonitorService : Service() {
         },
         emit = { step ->
             try {
-                AlertNotifier.sendWatchAlert(this, test = false, step = step)
+                AlertNotifier.sendWatchAlert(this, test = false, step = step, totalSteps = mode.steps)
                 store.incrementNotifications()
             } catch (e: Exception) {
                 store.fail("Upozorenje nije poslato: ${e.message}")
                 throw e // AlarmBurst will cancel the rest of this series.
             }
-        }
+        },
+        totalAlerts = mode.steps,
+        intervalMillis = mode.intervalMillis
     )
 
     override fun onCreate() {
         super.onCreate()
         store = SessionStore(this)
+        alertBurst = newBurst(AlertMode.STRONG)
     }
 
     override fun onBind(intent: Intent?): IBinder? = null
@@ -90,8 +98,13 @@ class MonitorService : Service() {
             stopSelf()
             return
         }
+        val preferences = Settings(this)
+        activeSensitivity = preferences.sensitivity
+        activeMode = preferences.alertMode
+        stoppedByUser = false
+        alertBurst = newBurst(activeMode)
         store.recoverInterrupted()
-        store.begin()
+        store.begin(activeSensitivity, activeMode)
         lastPositiveRealtime = -1L
         recording = true
         isActive = true
@@ -102,6 +115,7 @@ class MonitorService : Service() {
         val engine = SnoreEngine(cooldownMillis = 60_000L)
         var classifier: YamnetSnoreDetector? = null
         var lastScore = 0f
+        var finishReason = "Noćni režim završen"
         try {
             classifier = YamnetSnoreDetector(this)
             val minBytes = AudioRecord.getMinBufferSize(SAMPLE_RATE,
@@ -166,7 +180,7 @@ class MonitorService : Service() {
                 firstFrame = false
 
                 lastScore = classifier.classify(rolling.samples)
-                val snore = lastScore >= Settings.MODEL_THRESHOLD
+                val snore = lastScore >= activeSensitivity.modelThreshold
                 if (snore) lastPositiveRealtime = SystemClock.elapsedRealtime()
 
                 // Detector uses AUDIO sample time, preventing slow inference
@@ -185,6 +199,7 @@ class MonitorService : Service() {
                 }
             }
         } catch (e: Exception) {
+            finishReason = "Prekinuto zbog greške"
             Log.e("SnoreGuard", "Monitoring failed", e)
             store.fail("Praćenje prekinuto: ${e.message ?: e.javaClass.simpleName}")
         } finally {
@@ -197,7 +212,7 @@ class MonitorService : Service() {
             try { wakeLock?.let { if (it.isHeld) it.release() } } catch (_: Exception) { }
             wakeLock = null
             store.update(engine, lastScore, modelActive = classifier != null)
-            store.finish()
+            store.finish(if (stoppedByUser) "Ručno zaustavljeno" else finishReason)
             isActive = false
             stopForeground(STOP_FOREGROUND_REMOVE)
             stopSelf()
@@ -205,6 +220,7 @@ class MonitorService : Service() {
     }
 
     private fun requestStop() {
+        stoppedByUser = true
         recording = false
         mainHandler.post { alertBurst.cancel() }
         try { recorder?.stop() } catch (_: Exception) { }

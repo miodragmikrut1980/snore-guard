@@ -4,6 +4,37 @@ import org.junit.Assert.*
 import org.junit.Test
 
 class AlarmBurstTest {
+    @Test fun gentleModeEmitsExactlyOneNotificationImmediately() {
+        val sent = mutableListOf<Int>()
+        val burst = AlarmBurst(
+            scheduler = BurstScheduler { _, _ -> error("Should not schedule a follow-up") },
+            canContinue = { true },
+            emit = { sent.add(it) },
+            totalAlerts = 1
+        )
+        assertTrue(burst.start())
+        assertEquals(listOf(1), sent)
+        assertFalse(burst.isRunning)
+    }
+
+    @Test fun normalModeStopsAtSecondNotification() {
+        val sent = mutableListOf<Int>()
+        val actions = mutableListOf<() -> Unit>()
+        val burst = AlarmBurst(
+            scheduler = BurstScheduler { _, action -> actions.add(action) },
+            canContinue = { true },
+            emit = { sent.add(it) },
+            totalAlerts = 2
+        )
+        assertTrue(burst.start())
+        assertEquals(1, actions.size)
+        actions.removeAt(0).invoke()
+        assertEquals(listOf(1, 2), sent)
+        assertFalse(burst.isRunning)
+        assertTrue(actions.isEmpty())
+    }
+
+
     private class VirtualTimer : BurstScheduler {
         var now = 0L
         val events = mutableListOf<Pair<Long, () -> Unit>>()

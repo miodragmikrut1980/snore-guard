@@ -1,6 +1,16 @@
 # SnoreGuard — Android + Huawei Watch GT 2
 
-**Current version: 0.3.4 (build 34).** Android 8+; Kotlin; local offline YAMNet.
+**Current version: 0.4.0 (build 40).** Android 8+; Kotlin; local offline YAMNet.
+
+## New in v0.4.0
+
+- Three persistent sensitivity profiles: Low (0.16), Normal (0.10), High (0.07). Existing installs default to High.
+- Three alert modes: Gentle (1), Normal (2), Intense (3), spaced 16 seconds apart; existing installs default to Intense.
+- Manual pre-sleep readiness check: mic permission, notification permission/channel, battery optimization, night window. Watch vibration remains a manual check.
+- Per-session detection threshold, alert mode, analysis heartbeat and termination reason. Stale inference is flagged after 30 seconds.
+- All audio processing stays offline without storing or uploading raw audio.
+- Changes made while monitoring take effect the following night, not mid-session.
+- Sensitivity thresholds are heuristic and not clinically calibrated.
 
 ## New in v0.3.4
 
@@ -35,7 +45,7 @@ The version shown in the app's top header comes directly from the installed APK 
 
 ## Build / install
 
-The source code is in this repository. Open the latest successful v0.3.3 GitHub Actions run and download the debug APK from **Artifacts**, then extract and install it. Or use Android Studio with Android SDK 35 and JDK 17 and run:
+The source code is in this repository. Open the latest successful GitHub Actions run and download the debug APK from **Artifacts**, then extract and install it. Or use Android Studio with Android SDK 35 and JDK 17 and run:
 
     ./gradlew testDebugUnitTest assembleDebug
 

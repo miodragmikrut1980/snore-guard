@@ -11,8 +11,8 @@ import android.os.Build
 /** Alerts are ordinary Android notifications; Huawei Health decides if GT 2 vibrates. */
 object AlertNotifier {
     const val MONITOR_CHANNEL = "monitor_status_v1"
-    private const val SILENT_CHANNEL = "watch_alert_silent_v1"
-    private const val VIBRATE_CHANNEL = "watch_alert_vibrate_v1"
+    const val SILENT_CHANNEL = "watch_alert_silent_v1"
+    const val VIBRATE_CHANNEL = "watch_alert_vibrate_v1"
     const val ONGOING_NOTIFICATION = 42
 
     fun ensureChannels(context: Context) {
@@ -55,7 +55,7 @@ object AlertNotifier {
     }
 
     /** Each burst step is a NEW notification: never overwrite the previous step. */
-    fun sendWatchAlert(context: Context, test: Boolean, step: Int = 1) {
+    fun sendWatchAlert(context: Context, test: Boolean, step: Int = 1, totalSteps: Int = 3) {
         ensureChannels(context)
         val nm = context.getSystemService(NotificationManager::class.java)
         val channel = if (Settings(context).phoneVibration) VIBRATE_CHANNEL else SILENT_CHANNEL
@@ -70,8 +70,8 @@ object AlertNotifier {
             PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT)
         val notification = Notification.Builder(context, channel)
             .setSmallIcon(R.drawable.ic_status)
-            .setContentTitle(if (test) "SnoreGuard — TEST ${step}/3" else "SnoreGuard — hrkanje ${step}/3")
-            .setContentText(if (test) "Alarm ${step}/3 • proveri vibraciju GT 2" else "Upozorenje ${step}/3 • hrkanje se nastavlja")
+            .setContentTitle(if (test) "SnoreGuard — TEST ${step}/${totalSteps}" else "SnoreGuard — hrkanje ${step}/${totalSteps}")
+            .setContentText(if (test) "Alarm ${step}/${totalSteps} • proveri vibraciju GT 2" else "Upozorenje ${step}/${totalSteps} • hrkanje se nastavlja")
             .setWhen(System.currentTimeMillis())
             .setShowWhen(true)
             .setCategory(Notification.CATEGORY_REMINDER)

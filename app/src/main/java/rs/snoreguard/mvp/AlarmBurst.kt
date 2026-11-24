@@ -6,7 +6,7 @@ fun interface BurstScheduler {
 }
 
 /**
- * A 3-notification burst at T+0, T+16s and T+32s.
+ * Configurable 1-3-notification burst: default T+0, T+16s and T+32s.
  * One instance is owned by the monitoring service; a separate instance handles the manual test.
  * All calls must be made from the same thread (Android main thread in production).
  * Cancellation invalidates already scheduled callbacks via a generation token.
@@ -14,8 +14,14 @@ fun interface BurstScheduler {
 class AlarmBurst(
     private val scheduler: BurstScheduler,
     private val canContinue: () -> Boolean,
-    private val emit: (step: Int) -> Unit
+    private val emit: (step: Int) -> Unit,
+    private val totalAlerts: Int = TOTAL_ALERTS,
+    private val intervalMillis: Long = INTERVAL_MILLIS
 ) {
+    init {
+        require(totalAlerts in 1..3) { "Supported alert series: 1-3 notifications" }
+        require(intervalMillis > 0L)
+    }
     var isRunning: Boolean = false
         private set
     private var generation = 0L
@@ -40,8 +46,8 @@ class AlarmBurst(
             cancel()
             return
         }
-        if (step < TOTAL_ALERTS) {
-            scheduler.schedule(INTERVAL_MILLIS) { deliver(token, step + 1) }
+        if (step < totalAlerts) {
+            scheduler.schedule(intervalMillis) { deliver(token, step + 1) }
         } else {
             isRunning = false
         }

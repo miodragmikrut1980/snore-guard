@@ -2,6 +2,13 @@ package rs.snoreguard.mvp
 
 import android.Manifest
 import android.app.Activity
+import android.app.NotificationManager
+import android.net.Uri
+import android.os.PowerManager
+import android.provider.Settings as AndroidSettings
+import android.widget.AdapterView
+import android.widget.ArrayAdapter
+import android.widget.Spinner
 import android.content.Intent
 import android.content.pm.PackageManager
 import android.os.Build
@@ -25,6 +32,10 @@ class MainActivity : Activity() {
     private lateinit var test: Button
     private lateinit var testBurst: Button
     private lateinit var testBurstStatus: TextView
+    private lateinit var sensitivitySpinner: Spinner
+    private lateinit var alertModeSpinner: Spinner
+    private lateinit var readinessStatus: TextView
+    private lateinit var diagnostics: TextView
     private lateinit var manualBurst: AlarmBurst
     private lateinit var status: TextView
     private lateinit var description: TextView
@@ -67,17 +78,7 @@ class MainActivity : Activity() {
         test = findViewById(R.id.testButton)
         testBurst = findViewById(R.id.testBurstButton)
         testBurstStatus = findViewById(R.id.testBurstStatus)
-        manualBurst = AlarmBurst(
-            scheduler = BurstScheduler { delay, action -> handler.postDelayed({ action() }, delay) },
-            canContinue = { !isFinishing && !isDestroyed && notificationsEnabled() },
-            emit = { step ->
-                AlertNotifier.sendWatchAlert(this, test = true, step = step)
-                testBurstStatus.text = if (step < 3) {
-                    "Test: poslato ${step}/3 • sledeće za 16 s"
-                } else "Test završen: 3 odvojena obaveštenja za 32 s"
-                if (step == 3) testBurst.isEnabled = true
-            }
-        )
+        configureTestBurst()
         status = findViewById(R.id.statusLabel)
         description = findViewById(R.id.liveDescription)
         confidence = findViewById(R.id.liveConfidence)
@@ -87,6 +88,24 @@ class MainActivity : Activity() {
         alertStats = findViewById(R.id.alertStats)
         history = findViewById(R.id.historyText)
         errors = findViewById(R.id.errorText)
+        readinessStatus = findViewById(R.id.readinessStatus)
+        diagnostics = findViewById(R.id.diagnosticsText)
+        setupProfileControls()
+        findViewById<Button>(R.id.readinessButton).setOnClickListener {
+            readinessStatus.text = evaluateReadiness()
+        }
+        findViewById<Button>(R.id.appSettingsButton).setOnClickListener {
+            startActivity(Intent(AndroidSettings.ACTION_APPLICATION_DETAILS_SETTINGS,
+                Uri.parse("package:$packageName")))
+        }
+        findViewById<Button>(R.id.batterySettingsButton).setOnClickListener {
+            try {
+                startActivity(Intent(AndroidSettings.ACTION_IGNORE_BATTERY_OPTIMIZATION_SETTINGS))
+            } catch (_: Exception) {
+                startActivity(Intent(AndroidSettings.ACTION_APPLICATION_DETAILS_SETTINGS,
+                    Uri.parse("package:$packageName")))
+            }
+        }
 
         val vibration = findViewById<Switch>(R.id.phoneVibrationSwitch)
         vibration.isChecked = settings.phoneVibration
@@ -133,14 +152,15 @@ class MainActivity : Activity() {
             }
             if (action == "test") {
                 try {
-                    AlertNotifier.sendWatchAlert(this, test = true)
+                    AlertNotifier.sendWatchAlert(this, test = true, totalSteps = 1)
                     toast("Jedno test obaveštenje je poslato.")
                 } catch (ex: Exception) {
                     toast("Test nije uspeo: ${ex.message}")
                 }
             } else if (!manualBurst.isRunning) {
                 testBurst.isEnabled = false
-                testBurstStatus.text = "Počinje test: 0 s / 16 s / 32 s"
+                configureTestBurst()
+                testBurstStatus.text = "Počinje test: ${settings.alertMode.steps} obaveštenja"
                 if (!manualBurst.start()) {
                     testBurst.isEnabled = true
                     testBurstStatus.text = "Test nije pokrenut: proveri dozvole i obaveštenja."
@@ -199,12 +219,13 @@ class MainActivity : Activity() {
         val latest = active ?: store.history().optJSONObject(0)
         if (active != null) {
             confidence.text = if (active.optBoolean("modelActive")) {
-                "YAMNet lokalno • Snoring skor: ${"%.2f".format(Locale.US, active.optDouble("lastScore"))} (prag 0.07)"
+                "YAMNet lokalno • Snoring skor: ${"%.2f".format(Locale.US, active.optDouble("lastScore"))} (prag ${"%.2f".format(Locale.US, active.optDouble("threshold", 0.07))})"
             } else "AI model se učitava…"
         } else {
             confidence.text = "YAMNet • zvuk se ne čuva, obrada samo na telefonu"
         }
         showStats(latest, active != null)
+        showDiagnostics(latest, active != null)
         showHistory()
         errors.text = store.error()
     }
@@ -227,6 +248,24 @@ class MainActivity : Activity() {
         alertStats.text = "Serije alarma: ${item.optInt("alerts")} • Obaveštenja: ${item.optInt("notifications", item.optInt("alerts"))}"
     }
 
+    private fun showDiagnostics(item: JSONObject?, active: Boolean) {
+        if (item == null) {
+            diagnostics.text = "Dijagnostika: nema podataka."
+            return
+        }
+        val frames = item.optInt("analysedFrames")
+        val threshold = item.optDouble("threshold", 0.07)
+        val age = System.currentTimeMillis() - item.optLong("lastUpdate", System.currentTimeMillis())
+        val freshness = if (active && age > 30_000L) {
+            "⚠ Nema novih rezultata duže od 30 s — proveri praćenje."
+        } else if (active) {
+            "AI analiza je aktivna."
+        } else {
+            "Završetak: ${item.optString("stopReason", "Nepoznato")}"
+        }
+        diagnostics.text = "Obrađeno prozora: $frames • prag: ${"%.2f".format(Locale.US, threshold)}\n$freshness"
+    }
+
     private fun showHistory() {
         val records = store.history()
         if (records.length() == 0) {
@@ -242,6 +281,96 @@ class MainActivity : Activity() {
             rows.add("$date  •  $mins min  •  ${item.optInt("episodes")} $episodeUnit  •  ${item.optInt("alerts")} serija  •  ${item.optInt("notifications", item.optInt("alerts"))} obav.")
         }
         history.text = rows.joinToString("\n\n")
+    }
+
+    private fun configureTestBurst() {
+        if (::manualBurst.isInitialized) manualBurst.cancel()
+        val mode = settings.alertMode
+        manualBurst = AlarmBurst(
+            scheduler = BurstScheduler { delay, action -> handler.postDelayed({ action() }, delay) },
+            canContinue = { !isFinishing && !isDestroyed && notificationsEnabled() },
+            emit = { step ->
+                AlertNotifier.sendWatchAlert(this, test = true, step = step, totalSteps = mode.steps)
+                testBurstStatus.text = if (step < mode.steps) {
+                    "Test: poslato $step/${mode.steps} • sledeće za ${mode.intervalMillis / 1_000} s"
+                } else "Test završen: ${mode.steps} obaveštenja"
+                if (step == mode.steps) testBurst.isEnabled = true
+            },
+            totalAlerts = mode.steps,
+            intervalMillis = mode.intervalMillis
+        )
+        val durationSeconds = (mode.steps - 1) * (mode.intervalMillis / 1_000)
+        testBurst.text = "Test alarma ×${mode.steps} (${durationSeconds} sekundi)"
+        testBurstStatus.text = "Test radi i tokom dana. GT 2 vibraciju proveri na satu."
+    }
+
+    private fun setupProfileControls() {
+        sensitivitySpinner = findViewById(R.id.sensitivitySpinner)
+        alertModeSpinner = findViewById(R.id.alertModeSpinner)
+        val sensitivities = Sensitivity.values()
+        sensitivitySpinner.adapter = ArrayAdapter(this,
+            android.R.layout.simple_spinner_item, sensitivities.map { it.title }).apply {
+            setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item)
+        }
+        sensitivitySpinner.setSelection(settings.sensitivity.ordinal)
+        sensitivitySpinner.onItemSelectedListener = object : AdapterView.OnItemSelectedListener {
+            override fun onNothingSelected(parent: AdapterView<*>?) {}
+            override fun onItemSelected(parent: AdapterView<*>?, view: android.view.View?,
+                                        position: Int, id: Long) {
+                settings.sensitivity = sensitivities[position]
+            }
+        }
+        val modes = AlertMode.values()
+        alertModeSpinner.adapter = ArrayAdapter(this,
+            android.R.layout.simple_spinner_item, modes.map { it.title }).apply {
+            setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item)
+        }
+        alertModeSpinner.setSelection(settings.alertMode.ordinal)
+        alertModeSpinner.onItemSelectedListener = object : AdapterView.OnItemSelectedListener {
+            override fun onNothingSelected(parent: AdapterView<*>?) {}
+            override fun onItemSelected(parent: AdapterView<*>?, view: android.view.View?,
+                                        position: Int, id: Long) {
+                if (!::manualBurst.isInitialized || !manualBurst.isRunning) {
+                    settings.alertMode = modes[position]
+                    configureTestBurst()
+                }
+            }
+        }
+    }
+
+    private fun evaluateReadiness(): String {
+        val lines = mutableListOf<String>()
+        val microphoneOk = checkSelfPermission(Manifest.permission.RECORD_AUDIO) ==
+            PackageManager.PERMISSION_GRANTED
+        lines += if (microphoneOk) "✓ Mikrofon: dozvoljen" else "✗ Mikrofon: potrebna dozvola"
+        val notificationsOk = notificationsEnabled() &&
+            (Build.VERSION.SDK_INT < 33 ||
+                checkSelfPermission(Manifest.permission.POST_NOTIFICATIONS) ==
+                    PackageManager.PERMISSION_GRANTED)
+        lines += if (notificationsOk) "✓ Obaveštenja: dozvoljena"
+                 else "✗ Obaveštenja: uključiti u podešavanjima"
+        val nm = getSystemService(NotificationManager::class.java)
+        val channelId = if (settings.phoneVibration) AlertNotifier.VIBRATE_CHANNEL
+                        else AlertNotifier.SILENT_CHANNEL
+        val channel = nm.getNotificationChannel(channelId)
+        lines += if (channel != null && channel.importance != NotificationManager.IMPORTANCE_NONE) {
+            "✓ Kanal SnoreGuard alarma: aktivan"
+        } else {
+            "✗ Kanal alarma: blokiran (proveri podešavanja)"
+        }
+        val powerManager = getSystemService(PowerManager::class.java)
+        lines += if (powerManager.isIgnoringBatteryOptimizations(packageName)) {
+            "✓ Android ne optimizuje bateriju za SnoreGuard"
+        } else {
+            "⚠ Štednja baterije može prekinuti praćenje — proveri podešavanja"
+        }
+        lines += if (NightWindow.isNight(LocalTime.now())) {
+            "✓ U noćnom periodu 22:00–08:00"
+        } else {
+            "ℹ Praćenje se pokreće samo 22:00–08:00"
+        }
+        lines += "ℹ Na GT 2 ručno proveri Huawei Health, Bluetooth i režim Ne uznemiravaj."
+        return lines.joinToString("\n")
     }
 
     override fun onResume() {

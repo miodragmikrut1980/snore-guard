@@ -9,7 +9,7 @@ class SessionStore(context: Context) {
     private val prefs = context.getSharedPreferences("snoreguard_sessions", Context.MODE_PRIVATE)
     private val lock = Any()
 
-    fun begin() = synchronized(lock) {
+    fun begin(sensitivity: Sensitivity = Sensitivity.HIGH, mode: AlertMode = AlertMode.STRONG) = synchronized(lock) {
         val active = JSONObject()
             .put("start", System.currentTimeMillis())
             .put("end", 0L)
@@ -18,6 +18,12 @@ class SessionStore(context: Context) {
             // Old history without hopMs still uses its original 975 ms unit.
             .put("hopMs", 250)
             .put("detectorVersion", "breaths_v1")
+            .put("sensitivity", sensitivity.name)
+            .put("threshold", sensitivity.modelThreshold.toDouble())
+            .put("alertMode", mode.name)
+            .put("analysedFrames", 0)
+            .put("lastUpdate", System.currentTimeMillis())
+            .put("stopReason", "")
             .put("episodes", 0)
             .put("alerts", 0)
             .put("notifications", 0)
@@ -28,7 +34,9 @@ class SessionStore(context: Context) {
 
     fun update(engine: SnoreEngine, lastScore: Float, modelActive: Boolean) = synchronized(lock) {
         val active = activeOrNull() ?: return@synchronized
-        active.put("snoreFrames", engine.snoreFrames)
+        active.put("analysedFrames", engine.analysedFrames)
+            .put("lastUpdate", System.currentTimeMillis())
+            .put("snoreFrames", engine.snoreFrames)
             .put("episodes", engine.episodes)
             .put("alerts", engine.alerts)
             .put("lastScore", lastScore.toDouble())
@@ -47,9 +55,10 @@ class SessionStore(context: Context) {
         prefs.edit().putString("error", message.take(220)).apply()
     }
 
-    fun finish() = synchronized(lock) {
+    fun finish(reason: String = "Završeno") = synchronized(lock) {
         val active = activeOrNull() ?: return@synchronized
         active.put("end", System.currentTimeMillis())
+            .put("stopReason", reason)
         val history = safeArray(prefs.getString("history", "[]"))
         val merged = JSONArray()
         merged.put(active)
@@ -62,7 +71,7 @@ class SessionStore(context: Context) {
         // be presented as an ongoing microphone recording.
         if (activeOrNull() != null) {
             prefs.edit().putString("error", "Prethodno praćenje je prekinuo sistem ili je telefon restartovan.").apply()
-            finish()
+            finish("Sistem je prekinuo praćenje")
         }
     }
 
