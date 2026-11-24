@@ -1,0 +1,23 @@
+SNOREGUARD v0.1.0 — REZULTATI PROVERE U OKRUŽENJU IZRADE
+
+PROŠLO:
+- Provera XML sintakse AndroidManifest.xml, layout-a, tema i drawable resursa.
+- Provera da svih 12 UI R.id referenci postoji u layout-u.
+- Kompajliranje čistog Kotlin dela (NightWindow, SnoreEngine) kompajlerom kotlinc.
+- 13 smoke assertions: interval preko ponoći, početak/kraj noći, 5 audio prozora,
+  cooldown 60 sekundi, tišina, zabrana noćnih alarma van prozora.
+- Kompajliranje minimalnog Java Gradle bootstrap-a i pakovanje u JAR.
+
+NIJE MOGUĆE OVDE PROVERITI:
+- Android `assembleDebug` / `testDebugUnitTest` / `lintDebug` (Android SDK nije instaliran).
+- Nabavka YAMNet modela (okruženje ne dozvoljava download binarnih fajlova).
+- Test mikrofona na konkretnom telefonu i realna vibracija Huawei Watch GT 2.
+- Pouzdanost prepoznavanja hrkanja u stvarnoj spavaćoj sobi.
+
+Važno: Ovo je runnable SOURCE projekat sa download-om modela pri prvom
+Android Studio build-u, ali nije unapred testiran niti isporučen APK.
+
+ISPRAVKA v0.1.1:
+- Gradle Kotlin DSL: eksplicitni importi File/URL; uklonjen shadowing `java` Gradle ekstenzijom.
+- Strukturna provera import/reference: PROŠLO.
+- Android Gradle Sync i assembleDebug: NIJE moguća provera u ovom okruženju.

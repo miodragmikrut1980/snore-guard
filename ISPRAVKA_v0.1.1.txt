@@ -1,0 +1,18 @@
+SnoreGuard v0.1.1 — Gradle Sync ispravka
+
+Problem sa v0.1.0:
+Gradle Kotlin DSL prijavljuje `Unresolved reference: io` i `Unresolved reference: net`
+za `java.io.File` / `java.net.URL` unutar `app/build.gradle.kts`.
+
+Ispravljeno:
+- dodati `import java.io.File` i `import java.net.URL`
+- `java.io.File(...)` -> `File(...)`
+- `java.net.URL(...)` -> `URL(...)`
+
+Za postojeći projekat:
+1. Možeš samo da zameniš postojeći `app/build.gradle.kts` ispravljenim fajlom.
+2. Android Studio: File > Sync Project with Gradle Files.
+3. Ako Sync prođe, Build > Make Project.
+
+Napomena: ova ispravka je statički proverena, ali nije izvršen Android Gradle build
+u ovom okruženju jer Android SDK i mrežni Gradle artefakti nisu dostupni.

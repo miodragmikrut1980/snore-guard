@@ -1,0 +1,9 @@
+SnoreGuard 0.1.2 — Android resource linking fix
+
+Uzrok: Android XML koristi android:textAllCaps, ne android:allCaps.
+Ispravljene su dve instance u app/src/main/res/layout/activity_main.xml (linije 32 i 61).
+
+Za postojeći projekat: kopiraj activity_main.xml u app/src/main/res/layout, pa Build > Rebuild Project.
+Nije neophodno ponovo otvarati ceo projekat.
+
+Ovaj paket nije testiran punim Gradle/Android build-om u okruženju u kojem je napravljen.

@@ -1,0 +1,32 @@
+SNOREGUARD v0.3.0 — OBJAVA NA GITHUB
+====================================
+
+Nalog: miodragmikrut1980
+GitHub repozitorijum: miodragmikrut1980/snore-guard
+
+1. Otvori https://github.com/new
+2. Repository name: snore-guard
+3. Visibility: Private (po izboru), a "Initialize with a README" ostavi ISKLJUCENO.
+4. Create repository.
+5. Javi u ChatGPT-u da si kreirao miodragmikrut1980/snore-guard.
+   Ako je GitHub integracija povezana, kod može biti objavljen kroz nju,
+   bez instalacije drugih alata na Mac.
+
+ALTERNATIVA ZA RUCNI PUSH NA RACUNARU SA GIT-OM
+
+cd SnoreGuard
+git remote add origin https://github.com/miodragmikrut1980/snore-guard.git
+git push -u origin main --tags
+
+Uslov: izvori su lokalni git repozitorijum ako je preuzet Git bundle.
+Sadržaj ZIP-a je kod bez .git metapodataka. Možeš inicijalizovati i običan ZIP:
+
+git init -b main
+git add .
+git commit -m "Release v0.3.0: stronger watch notification burst"
+git tag v0.3.0
+git remote add origin https://github.com/miodragmikrut1980/snore-guard.git
+git push -u origin main --tags
+
+GitHub Actions automatski pokušava assembleDebug + testDebugUnitTest i zatim objavljuje
+APK kao Actions artifact. Nije potvrđeno da će CI proći pre stvarnog pokretanja.
