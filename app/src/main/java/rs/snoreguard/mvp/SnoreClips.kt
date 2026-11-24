@@ -106,15 +106,20 @@ class SnoreClipStore(context: Context) {
                 .put("durationMs", clip.durationMs)
                 .put("bytes", clip.bytes))
         }
-        if (!prefs.edit().putString("clips", updated.toString()).commit()) return@synchronized false
-        !File(dir, filename).exists() || File(dir, filename).delete()
+        // Remove the actual private WAV first. Never hide a file that failed to delete.
+        val wav = File(dir, filename)
+        if (wav.exists() && !wav.delete()) return@synchronized false
+        prefs.edit().putString("clips", updated.toString()).commit()
     }
 
     fun deleteAll(): Boolean = synchronized(lock) {
         val existing = list()
-        if (!prefs.edit().putString("clips", "[]").commit()) return@synchronized false
-        existing.forEach { File(dir, it.filename).delete() }
-        true
+        // Keep metadata if any sensitive WAV could not be removed.
+        for (clip in existing) {
+            val wav = File(dir, clip.filename)
+            if (wav.exists() && !wav.delete()) return@synchronized false
+        }
+        prefs.edit().putString("clips", "[]").commit()
     }
 
     companion object {
