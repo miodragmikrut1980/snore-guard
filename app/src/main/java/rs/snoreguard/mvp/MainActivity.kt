@@ -158,6 +158,18 @@ class MainActivity : Activity() {
         snoreTestButton = findViewById(R.id.snoreTestButton)
         snoreTestStatus = findViewById(R.id.snoreTestStatus)
         setupRecordingAndTimeControls()
+        findViewById<Button>(R.id.doctorPdfButton).setOnClickListener {
+            if (MonitorService.isActive || fullBackupBusy || store.history().length() == 0) {
+                toast("Za PDF je potrebna završena sesija i zaustavljeno praćenje.")
+            } else {
+                AlertDialog.Builder(this).setTitle("Izveštaj za lekara")
+                    .setMessage("PDF sadrži do sedam završenih sesija, statistiku i broj ocena. Ne sadrži WAV snimke ni beleške. Sačuvaj ga privatno.")
+                    .setNegativeButton("Otkaži", null)
+                    .setPositiveButton("Izvezi PDF") { _, _ ->
+                        createDocument("application/pdf", "SnoreGuard-izvestaj.pdf", REQUEST_DOCTOR_PDF)
+                    }.show()
+            }
+        }
         snoreTestButton.setOnClickListener {
             when {
                 MonitorService.isActive && MonitorService.isTestSession -> {
@@ -395,6 +407,7 @@ class MainActivity : Activity() {
         showDiagnostics(latest, active != null)
         showHistory()
         showCharts(latest)
+        showAdvancedAnalytics(latest, active != null)
         showSavedClips()
         errors.text = store.error()
     }
@@ -460,6 +473,9 @@ class MainActivity : Activity() {
             val item = history.optJSONObject(i) ?: continue
             // Legacy versions used a different event definition: never compare them.
             if (item.optString("detectorVersion") != "breaths_v1") continue
+            val metric = NightReport.metrics(item) ?: continue
+            if (metric.score == null) continue
+            if (recent.isNotEmpty() && item.optString("sensitivity") != recent.first().optString("sensitivity")) continue
             recent.add(item)
             if (recent.size == 7) break
         }
@@ -467,19 +483,38 @@ class MainActivity : Activity() {
         val smallDate = SimpleDateFormat("dd.MM", Locale.forLanguageTag("sr-RS"))
         comparisonChart.showSeries(
             sorted.map { smallDate.format(Date(it.optLong("start"))) },
-            sorted.map { it.optInt("episodes") },
+            sorted.map { kotlin.math.round(NightReport.metrics(it)!!.eventsPerHour).toInt() },
             sorted.isNotEmpty()
         )
         comparisonDetails.text = if (recent.isEmpty()) {
             "Još nema uporedivih završenih noći. Praćenje je potrebno završiti da bi se pojavilo ovde."
         } else {
+            val newest = NightReport.metrics(recent[0])!!.eventsPerHour
             val delta = if (recent.size >= 2) {
-                val diff = recent[0].optInt("episodes") - recent[1].optInt("episodes")
-                "Poslednja noć: ${recent[0].optInt("episodes")} prepoznatih hrkanja; " +
-                    "razlika prema prethodnoj: ${if (diff > 0) "+" else ""}$diff."
-            } else "Sačuvana je jedna noć. Poređenje će se pojaviti posle druge."
-            "$delta Promena osetljivosti i dužine praćenja utiče na rezultat."
+                val previous = NightReport.metrics(recent[1])!!.eventsPerHour
+                "Poslednja noć: " + NightReport.decimal(newest) +
+                    " događaja/h; razlika: " + NightReport.decimal(newest - previous) + " događaja/h."
+            } else "Jedna uporediva noć: " + NightReport.decimal(newest) + " događaja/h."
+            "$delta Grafikon: zaokruženi događaji po analiziranom satu, ista osetljivost, najmanje 30 min i 80% pokrivenosti."
         }
+    }
+
+    private fun showAdvancedAnalytics(item: JSONObject?, active: Boolean) {
+        val view = findViewById<TextView>(R.id.advancedAnalytics)
+        val result = item?.let { NightReport.metrics(it, if (active) System.currentTimeMillis() else it.optLong("end")) }
+        val reviews = NightAnalytics.reviews(clipStore.list().map { it.label })
+        val details = if (result == null) "Nema kompatibilnih podataka za naprednu analizu."
+        else "Indeks hrkanja: " + (result.score?.let { "$it / 100" } ?: "nedovoljno podataka") +
+            "\nDogađaji po analiziranom satu: " + NightReport.decimal(result.eventsPerHour) +
+            "\nAnalizirano: " + NightReport.decimal(result.analysedHours) + " h • pokrivenost: " +
+            NightReport.decimal(result.coverage * 100) + "%" +
+            "\nPozitivni AI prozori: " + NightReport.decimal(result.positivePercent) + "%"
+        view.text = details + "\n\nOcene svih sačuvanih isečaka: " +
+            "${reviews.snore} hrkanje • ${reviews.falseAlarm} lažni • ${reviews.uncertain} nejasni • ${reviews.unreviewed} neocenjeni" +
+            (reviews.confirmedPercent?.let { "\nKorisnik potvrdio $it% jasno ocenjenih isečaka (n=${reviews.reviewed})." } ?: "") +
+            "\nOvo nije klinička tačnost AI modela. Indeks meri udeo pozitivnih prozora, ne jačinu zvuka ni apneju."
+        findViewById<Button>(R.id.doctorPdfButton).isEnabled =
+            !MonitorService.isActive && !fullBackupBusy && store.history().length() > 0
     }
 
     private fun createDocument(mime: String, title: String, requestCode: Int) {
@@ -535,6 +570,16 @@ class MainActivity : Activity() {
         val uri = data?.data ?: return
         try {
             when (requestCode) {
+                REQUEST_DOCTOR_PDF -> {
+                    check(!MonitorService.isActive && !fullBackupBusy) { "Zaustavi praćenje." }
+                    val saved = store.history()
+                    val nights = (0 until minOf(7, saved.length())).mapNotNull { saved.optJSONObject(it) }
+                    val target = contentResolver.openOutputStream(uri, "w")
+                        ?: throw IllegalStateException("Ne mogu da otvorim PDF odredište.")
+                    target.use { NightReport.write(it, nights, clipStore.list()) }
+                    exportStatus.text = "✓ PDF izveštaj je sačuvan."
+                    toast("PDF izveštaj je sačuvan.")
+                }
                 REQUEST_FULL_EXPORT -> {
                     val archive = FullBackupArchive(applicationContext)
                     runFullBackupTask("Pravim kompletnu ZIP rezervnu kopiju…") {
@@ -970,6 +1015,7 @@ class MainActivity : Activity() {
         private const val REQUEST_BACKUP = 5002
         private const val REQUEST_RESTORE = 5003
         private const val REQUEST_EXPORT_CLIP_REVIEWS = 5004
+        private const val REQUEST_DOCTOR_PDF = 5005
         private const val REQUEST_FULL_EXPORT = 6001
         private const val REQUEST_FULL_IMPORT = 6002
     }

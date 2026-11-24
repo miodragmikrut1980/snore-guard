@@ -1,5 +1,13 @@
 # Changelog
 
+## v0.8.0 — Advanced night analytics
+- Descriptive snore index (rounded percentage of positive AI windows), analyzed time, events per analyzed hour and coverage.
+- Suppress index below 30 minutes analyzed time or 80% coverage; compare up to seven qualifying nights with matching detector and sensitivity.
+- Feedback summary of saved clips, excluding unsure/unreviewed clips from confirmation ratio; not model accuracy.
+- Private, user-initiated PDF of up to seven completed sessions with hourly counts, coverage and clip review totals, no raw audio or notes.
+- Preserve existing storage schema, detector and alarm behavior. Smart vibration and post-notification response analysis remain future work.
+- Unit tests for normalization, invalid input, minimum data and review counts.
+
 ## v0.7.1 — Complete ZIP backups and verified signing workflow
 
 - Versioned ZIP export/import with one statistics.json and manifest.json, plus private WAV recordings with notes and user review labels.

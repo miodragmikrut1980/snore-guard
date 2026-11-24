@@ -178,6 +178,21 @@
                 android:textColor="@color/text_primary" android:textSize="16sp" />
         </LinearLayout>
 
+        <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content"
+            android:layout_marginTop="12dp" android:background="@drawable/bg_card"
+            android:padding="18dp" android:orientation="vertical">
+            <TextView android:layout_width="match_parent" android:layout_height="wrap_content"
+                android:text="NAPREDNA NOĆNA ANALIZA" android:textStyle="bold"
+                android:textColor="@color/text_primary" android:textSize="16sp" />
+            <TextView android:id="@+id/advancedAnalytics" android:layout_width="match_parent"
+                android:layout_height="wrap_content" android:layout_marginTop="10dp"
+                android:textColor="@color/text_primary" android:textSize="14sp" />
+            <Button android:id="@+id/doctorPdfButton" android:layout_width="match_parent"
+                android:layout_height="50dp" android:layout_marginTop="12dp"
+                android:text="Izveštaj za lekara (PDF)" android:textAllCaps="false"
+                android:textColor="@color/button_text" android:background="@drawable/bg_primary" />
+        </LinearLayout>
+
         <TextView android:id="@+id/diagnosticsText" android:layout_width="match_parent"
             android:layout_height="wrap_content" android:layout_marginTop="13dp"
             android:text="Dijagnostika će biti prikazana tokom praćenja."
@@ -257,7 +272,7 @@
             <rs.snoreguard.mvp.SnoreBarChartView android:id="@+id/comparisonChart"
                 android:layout_width="match_parent" android:layout_height="190dp"
                 android:layout_marginTop="10dp"
-                android:contentDescription="Grafikon prepoznatih hrkanja tokom poslednjih sedam noći" />
+                android:contentDescription="Grafikon događaja po analiziranom satu za uporedive noći" />
         </LinearLayout>
 
         <TextView android:layout_width="match_parent" android:layout_height="wrap_content"
