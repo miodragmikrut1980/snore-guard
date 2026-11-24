@@ -6,7 +6,7 @@ fun interface BurstScheduler {
 }
 
 /**
- * A 3-notification burst at T+0, T+8s and T+16s.
+ * A 3-notification burst at T+0, T+16s and T+32s.
  * One instance is owned by the monitoring service; a separate instance handles the manual test.
  * All calls must be made from the same thread (Android main thread in production).
  * Cancellation invalidates already scheduled callbacks via a generation token.
@@ -54,6 +54,6 @@ class AlarmBurst(
 
     companion object {
         const val TOTAL_ALERTS = 3
-        const val INTERVAL_MILLIS = 8_000L
+        const val INTERVAL_MILLIS = 16_000L
     }
 }

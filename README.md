@@ -1,8 +1,10 @@
 # SnoreGuard MVP — Android + Huawei Watch GT 2
 
 **Status:** kompletan izvorni Android Studio projekat (MVP, ne medicinski uređaj).  
-**Verzija:** 0.3.1 • Kotlin • Android 8+ (API 26+) • target API 35.  
-**Postavke:** HIGH prag YAMNet Snoring `0.07`, približno 5 sekundi potvrde, tri odvojena obaveštenja na 0, 8. i 16. sekundi (dok se hrkanje nastavlja), 60 sekundi između početaka serija, 22:00–08:00.
+**Verzija:** 0.3.2 • Kotlin • Android 8+ (API 26+) • target API 35.  
+**Postavke:** HIGH prag YAMNet Snoring `0.07`, približno 5 sekundi potvrde, tri odvojena obaveštenja na 0, 16. i 32. sekundi (dok se hrkanje nastavlja), 60 sekundi između početaka serija, 22:00–08:00.
+
+**Novo v0.3.2:** Eksperimentalni razmak 16 sekundi umesto 8 (0/16/32 s), jer na telefonu stižu sva tri upozorenja, ali GT 2 vibrira samo na prvo i treće. Ovo još nije potvrđeno rešenje i mora se proveriti na satu.
 
 **Novo v0.3.1:** prikaz stvarno instalirane verzije i build broja odmah na vrhu početnog ekrana (preuzeto iz Android PackageManager-a, nije hardkodirano). Ostale funkcije iz v0.3.0 su nepromenjene.
 
@@ -18,7 +20,7 @@
 2. Foreground service sa tipom `microphone` čita mono PCM 16 kHz sa mikrofona (16-bit) u blokovima od 15.600 uzoraka (~0,975 s).
 3. Svaki blok se obrađuje **lokalno** preko **TensorFlow Lite YAMNet** modela; koristi se class index 38, `Snoring` (AudioSet).
 4. Za aktiviranje alarma potrebno je 5 obrađenih blokova, od kojih su najmanje 3 pozitivna, uključujući poslednji. Time se izbegavaju pojedinačni udari, ali algoritam NIJE klinički validiran.
-5. Alarm je serija do tri odvojena obaveštenja na 0/8/16 sekundi, samo unutar 22:00–08:00 i dok detekcija hrkanja traje. Pauza između početaka serija je 60 sekundi. Posle 08:00 se praćenje automatski zaustavlja.
+5. Alarm je serija do tri odvojena obaveštenja na 0/16/32 sekunde, samo unutar 22:00–08:00 i dok detekcija hrkanja traje. Pauza između početaka serija je 60 sekundi. Posle 08:00 se praćenje automatski zaustavlja.
 6. Huawei Health može preslikati **obično Android obaveštenje** na Huawei Watch GT 2. Sat može vibrirati, ali to NIJE direktna komanda za motor vibracije sata.
 7. Statistika se čuva u privatnim Android `SharedPreferences` (poslednjih 30 sesija). Ne čuva se nijedan audio fajl; aplikacija nema INTERNET permission i ništa ne šalje na mrežu.
 
@@ -41,7 +43,7 @@ Detaljni koraci su u **`INSTALACIJA.txt`**. Ukratko:
 3. Poveži Android telefon (USB debugging) i izaberi **Run > Run 'app'**. Ili Build > Build APK(s) i instaliraj `app/build/outputs/apk/debug/app-debug.apk`.
 4. Prihvati dozvole za obaveštenja i mikrofon.
 5. Huawei Health > Devices > Huawei GT 2 > Notifications: uključi **SnoreGuard**, pa klikni **Test obaveštenja → Huawei GT 2**.
-6. Klikni **Test jačeg alarma ×3** i proveri da li sat vibrira na 0, 8. i 16. sekundi. Tokom ovog testa ekran aplikacije ostavi otvoren. Ako sat ne vibrira: proveri Bluetooth, dozvole, Sleep/DND na satu i rezervnu opciju **Vibracija i na telefonu**.
+6. Klikni **Test jačeg alarma ×3** i proveri da li sat vibrira na 0, 16. i 32. sekundi. Tokom ovog testa ekran aplikacije ostavi otvoren. Ako sat ne vibrira: proveri Bluetooth, dozvole, Sleep/DND na satu i rezervnu opciju **Vibracija i na telefonu**.
 7. Praćenje je moguće pokrenuti samo između 22:00 i 08:00. Telefon postavi blizu kreveta, ali bez prekrivanja mikrofona i poželjno na punjaču. Ostavi Android dozvolu za mikrofon aktivnom.
 
 ### Model i internet
@@ -56,7 +58,7 @@ U ZIP-u je **transparentni minimalni bootstrap JAR**, sa sopstvenim Java izvorni
 
 ## Testovi
 
-- `./gradlew testDebugUnitTest` (unit testovi: noćni prozor, cooldown, alarm burst 0/8/16 s i otkazivanje)
+- `./gradlew testDebugUnitTest` (unit testovi: noćni prozor, cooldown, alarm burst 0/16/32 s i otkazivanje)
 - `./gradlew assembleDebug`
 - Fizički telefon i Huawei GT2: `docs/TEST_PLAN.md` za test realnog sata i dozvola.
 
@@ -75,7 +77,7 @@ U ZIP-u je **transparentni minimalni bootstrap JAR**, sa sopstvenim Java izvorni
 
 Ovo je hobi/prototip aplikacija za podsticaj promene položaja. **Ne meri prestanak disanja, kiseonik, ni kvalitet sna kliničkom preciznošću**. Visok prag osetljivosti može dovesti do lažnih upozorenja; govor druge osobe, TV ili zvukovi iz sobe mogu zbuniti model. Ako postoji glasno hrkanje sa pauzama u disanju, gušenjem ili dnevnom pospanošću, posavetuj se sa lekarom oko procene apneje.
 
-## GitHub / v0.3.1
+## GitHub / v0.3.2
 
 Objavljuju se izvorni fajlovi, **bez** generisanog APK-a i bez YAMNet modela (model se preuzima prilikom build-a). `CHANGELOG.md` opisuje novosti, a `docs/TEST_PLAN.md` daje test matrice. GitHub nije izvor automatskog ažuriranja instalirane aplikacije; novu verziju treba izgraditi i instalirati.
 

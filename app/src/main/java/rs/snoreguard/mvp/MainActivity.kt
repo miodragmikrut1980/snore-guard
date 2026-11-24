@@ -73,8 +73,8 @@ class MainActivity : Activity() {
             emit = { step ->
                 AlertNotifier.sendWatchAlert(this, test = true, step = step)
                 testBurstStatus.text = if (step < 3) {
-                    "Test: poslato ${step}/3 • sledeće za 8 s"
-                } else "Test završen: 3 odvojena obaveštenja za 16 s"
+                    "Test: poslato ${step}/3 • sledeće za 16 s"
+                } else "Test završen: 3 odvojena obaveštenja za 32 s"
                 if (step == 3) testBurst.isEnabled = true
             }
         )
@@ -140,7 +140,7 @@ class MainActivity : Activity() {
                 }
             } else if (!manualBurst.isRunning) {
                 testBurst.isEnabled = false
-                testBurstStatus.text = "Počinje test: 0 s / 8 s / 16 s"
+                testBurstStatus.text = "Počinje test: 0 s / 16 s / 32 s"
                 if (!manualBurst.start()) {
                     testBurst.isEnabled = true
                     testBurstStatus.text = "Test nije pokrenut: proveri dozvole i obaveštenja."

@@ -21,17 +21,19 @@ class AlarmBurstTest {
             now = time
         }
     }
-    @Test fun threeUniqueStepsAtEightSecondIntervals() {
+    @Test fun threeUniqueStepsAtSixteenSecondIntervals() {
         val timer = VirtualTimer()
         val emitted = mutableListOf<Pair<Int, Long>>()
         val burst = AlarmBurst(timer, { true }) { step -> emitted.add(step to timer.now) }
         assertTrue(burst.start())
         assertFalse(burst.start()) // no duplicate overlapping series
-        timer.advanceTo(7_999L)
+        timer.advanceTo(15_999L)
         assertEquals(listOf(1 to 0L), emitted)
-        timer.advanceTo(8_000L)
         timer.advanceTo(16_000L)
-        assertEquals(listOf(1 to 0L, 2 to 8_000L, 3 to 16_000L), emitted)
+        timer.advanceTo(31_999L)
+        assertEquals(listOf(1 to 0L, 2 to 16_000L), emitted)
+        timer.advanceTo(32_000L)
+        assertEquals(listOf(1 to 0L, 2 to 16_000L, 3 to 32_000L), emitted)
         assertFalse(burst.isRunning)
     }
     @Test fun stoppedSnoringCancelsRestOfBurst() {
@@ -41,7 +43,7 @@ class AlarmBurstTest {
         burst.start()
         timer.advanceTo(4_000L)
         burst.cancel()
-        timer.advanceTo(30_000L)
+        timer.advanceTo(40_000L)
         assertEquals(listOf(1), events)
     }
     @Test fun permissionOrNightWindowBecomingFalseStopsFutureNotifications() {
@@ -60,9 +62,9 @@ class AlarmBurstTest {
         val events = mutableListOf<Int>()
         val burst = AlarmBurst(timer, { true }) { events.add(it) }
         burst.start()
-        timer.advanceTo(16_000L)
-        assertTrue(burst.start())
         timer.advanceTo(32_000L)
+        assertTrue(burst.start())
+        timer.advanceTo(64_000L)
         assertEquals(listOf(1, 2, 3, 1, 2, 3), events)
     }
     @Test fun exceptionStopsAdditionalNotifications() {

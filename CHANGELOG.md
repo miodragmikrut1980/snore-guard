@@ -1,5 +1,12 @@
 # Changelog
 
+## v0.3.2 — GT 2 alarm interval experiment
+- Three distinct alerts are now spaced at 0, 16, 32 seconds instead of 0, 8, 16.
+- User verified all three phone notifications but GT 2 vibrated only for alerts one and three.
+- Keep 60-second burst-start cooldown, night mode, detector, burst cancellation and version label unchanged.
+- Update scheduler unit tests and daytime test instructions.
+- Watch vibration behaviour at 16-second spacing must still be tested on the device.
+
 ## v0.3.1 — Visible installed version
 - Show `v<versionName> · build <versionCode>` in the home screen header.
 - Read version from Android PackageManager for the installed APK, without hard-coded version strings.

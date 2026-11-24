@@ -142,7 +142,7 @@ class MonitorService : Service() {
                 if (alert) {
                     store.update(engine, lastScore, modelActive = true)
                     // The alarm's first notification is immediate; steps 2/3 are sent
-                    // 8/16 seconds later ONLY while hrkanje continues and service is active.
+                    // 16/32 seconds later ONLY while hrkanje continues and service is active.
                     mainHandler.post { if (recording) alertBurst.start() }
                 }
                 if (engine.analysedFrames % 5 == 0) store.update(engine, lastScore, modelActive = true)
