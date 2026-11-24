@@ -1,5 +1,15 @@
 # Changelog
 
+## v0.7.1 — Complete ZIP backups and verified signing workflow
+
+- Versioned ZIP export/import with one statistics.json and manifest.json, plus private WAV recordings with notes and user review labels.
+- Strict path whitelisting, entry-count/size limits, clip duration checks, ZIP CRC and SHA-256 hashes; no extracted files outside private staging.
+- Merge imported completed-night history and existing WAV clips without overwriting old local recordings. Report skipped clips once 40-clip capacity is reached.
+- Background execution of full backup operations and explicit consent for exporting private audio.
+- Prepare opt-in manual signed-release GitHub Actions job, using 5 repository secrets, private temporary keystore, and certificate fingerprint verification.
+- Do not commit signing keys; protect secrets; **stable release is not active until setup**.
+- Test WAV signature validation, paths, checksums, and existing tests.
+
 ## v0.7.0 — Clip review and inference diagnostics
 - Subjectively tag saved WAVs as snoring / false alarm / unsure / unreviewed.
 - Attach an optional local 160-character note to each saved audio clip; preserve user reviews when more clips are stored.

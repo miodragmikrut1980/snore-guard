@@ -1,6 +1,16 @@
 # SnoreGuard — Android + Huawei Watch GT 2
 
-**Current version: 0.7.0 (build 70).** Android 8+; Kotlin; local offline YAMNet.
+**Current version: 0.7.1 (build 71).** Android 8+; Kotlin; local offline YAMNet.
+
+## New in v0.7.1 — Complete Backup & Safe Updates
+
+- **Export kompletne kopije (ZIP)** now backs up all completed statistics (up to 365 sessions), user settings, every available private WAV clip (up to 40), and each saved clip's subjective review label and personal note.
+- **Import kompletne kopije (ZIP)** securely checks version, allowed ZIP paths, each item's byte length, WAV PCM header, ZIP CRC and SHA-256 hashes. Extraction is bounded to 25 MB and runs off the UI thread. Existing WAVs are NOT overwritten. New clips are imported only into free slots up to 40; skipped items are explicitly counted in the result.
+- Files are stored only on the device and selected backup location; **no cloud upload**. The ZIP itself is **not encrypted** and contains potentially sensitive room conversations. Keep backups private and only share with consent.
+- Full backup is separate from the existing JSON export/import (statistics and preferences only) and CSV export (Excel only). Audio and review metadata are intentionally excluded from the legacy JSON export.
+- Stop monitoring before importing/exporting complete backups, and **verify that the ZIP exists outside the app** before uninstalling an incompatible debug build. Partial imports are recoverable by retrying the same validated ZIP.
+- A **manual signed-release workflow** is prepared. It signs production APKs using an external private keystore stored in GitHub Actions secrets and verifies the expected SHA-256 certificate. **A stable release signing key is NOT yet configured**; current GitHub Actions APKs remain debug signed, and one migration from debug to release requires uninstall after a verified backup. See [Release signing guide](docs/RELEASE_SIGNING.md).
+- The microphone AI, alarms, custom hours and 90-second test remain unchanged.
 
 ## New in v0.7.0 — review feedback and analysis reliability
 

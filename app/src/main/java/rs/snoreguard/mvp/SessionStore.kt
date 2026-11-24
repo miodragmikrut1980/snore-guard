@@ -154,6 +154,60 @@ class SessionStore(context: Context) {
      * unique records are retained, matching the existing history limit.
      * Validation completes before any persistent settings are changed.
      */
+    /**
+     * Structural validation without changing settings or history. Called before
+     * a full ZIP restore copies any WAV files into the private app directory.
+     */
+    fun validateImportBackup(raw: String) = synchronized(lock) {
+        require(raw.toByteArray(Charsets.UTF_8).size <= MAX_BACKUP_BYTES) {
+            "Rezervna kopija je prevelika."
+        }
+        val root = JSONObject(raw)
+        require(root.optString("app") == "SnoreGuard" && root.optInt("schema") == 1) {
+            "Nepodržan format rezervne kopije."
+        }
+        val incoming = root.optJSONArray("history")
+            ?: throw IllegalArgumentException("Nedostaje istorija.")
+        require(incoming.length() <= MAX_HISTORY) { "Previše sesija u rezervnoj kopiji." }
+        val received = mutableListOf<JSONObject>()
+        for (i in 0 until incoming.length()) {
+            val obj = incoming.optJSONObject(i)
+                ?: throw IllegalArgumentException("Neispravna sesija na poziciji ${i + 1}.")
+            val start = obj.optLong("start")
+            val end = obj.optLong("end")
+            require(start > 0 && end >= start && end - start <= 48L * 60 * 60 * 1000) {
+                "Neispravno vreme sesije ${i + 1}."
+            }
+            require(obj.optInt("episodes") >= 0 && obj.optInt("alerts") >= 0) {
+                "Neispravni brojači sesije ${i + 1}."
+            }
+            val histogram = obj.optJSONObject("hourly")
+            if (histogram != null) {
+                for (hour in NightHours.allLabels()) {
+                    require(histogram.optInt(hour, 0) in 0..1_000_000) {
+                        "Neispravan satni podatak."
+                    }
+                }
+            }
+            received.add(JSONObject(obj.toString()))
+        }
+        val preferences = root.optJSONObject("settings")
+        val sensitivityName = preferences?.optString("sensitivity")
+        val modeName = preferences?.optString("alertMode")
+        val startMinutes = preferences?.optInt("windowStart", 22 * 60) ?: 22 * 60
+        val endMinutes = preferences?.optInt("windowEnd", 8 * 60) ?: 8 * 60
+        require(startMinutes in 0..1439 && endMinutes in 0..1439) {
+            "Neispravno vreme u rezervnoj kopiji."
+        }
+        require(sensitivityName == null || Sensitivity.values().any { it.name == sensitivityName }) {
+            "Nepoznata osetljivost u kopiji."
+        }
+        require(modeName == null || AlertMode.values().any { it.name == modeName }) {
+            "Nepoznat režim alarma u kopiji."
+        }
+
+    }
+
     fun importBackup(raw: String): Int = synchronized(lock) {
         require(raw.toByteArray(Charsets.UTF_8).size <= MAX_BACKUP_BYTES) {
             "Rezervna kopija je prevelika."

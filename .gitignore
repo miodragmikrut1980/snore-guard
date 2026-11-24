@@ -9,3 +9,11 @@ local.properties
 *.aab
 /app/src/main/assets/yamnet.tflite
 .DS_Store
+
+# Never commit signing keys or local signing configuration
+*.jks
+*.keystore
+keystore.properties
+key.properties
+.env
+.env.*

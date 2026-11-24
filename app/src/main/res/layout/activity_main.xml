@@ -188,6 +188,29 @@
         <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content"
             android:layout_marginTop="9dp" android:background="@drawable/bg_card" android:padding="16dp"
             android:orientation="vertical">
+            <TextView android:layout_width="match_parent" android:layout_height="wrap_content"
+                android:text="POTPUNA KOPIJA (ZIP)" android:textStyle="bold" android:textSize="15sp"
+                android:textColor="@color/text_primary" />
+            <TextView android:layout_width="match_parent" android:layout_height="wrap_content"
+                android:layout_marginTop="6dp"
+                android:text="Prenesi statistiku, podešavanja, sve dostupne WAV snimke, ocene i beleške. ZIP nije šifrovan — čuvaj ga privatno."
+                android:textSize="12sp" android:textColor="@color/text_secondary" />
+            <Button android:id="@+id/fullExportButton" android:layout_width="match_parent"
+                android:layout_height="50dp" android:layout_marginTop="10dp"
+                android:text="Export kompletne kopije (ZIP)" android:textAllCaps="false"
+                android:textColor="@color/button_text" android:background="@drawable/bg_primary" />
+            <Button android:id="@+id/fullImportButton" android:layout_width="match_parent"
+                android:layout_height="50dp" android:layout_marginTop="9dp"
+                android:text="Import kompletne kopije (ZIP)" android:textAllCaps="false"
+                android:textColor="@color/text_primary" android:background="@drawable/bg_secondary" />
+            <TextView android:id="@+id/fullBackupStatus" android:layout_width="match_parent"
+                android:layout_height="wrap_content" android:layout_marginTop="9dp"
+                android:text="Import čuva postojeće snimke i dodaje samo nove, do 40 ukupno. Zvučni snimci su privatni."
+                android:textColor="@color/text_secondary" android:textSize="12sp" />
+            <TextView android:layout_width="match_parent" android:layout_height="wrap_content"
+                android:layout_marginTop="18dp" android:text="SAMO STATISTIKA"
+                android:textStyle="bold" android:textSize="15sp"
+                android:textColor="@color/text_primary" />
             <Button android:id="@+id/backupButton" android:layout_width="match_parent"
                 android:layout_height="50dp"
                 android:text="Export statistike (JSON za čuvanje)" android:textAllCaps="false"

@@ -7,6 +7,17 @@ plugins {
     id("org.jetbrains.kotlin.android")
 }
 
+// Signing credentials exist ONLY as environment variables in a trusted release job.
+// Never commit or print the private keystore or password.
+val privateReleaseStore = System.getenv("SNOREGUARD_SIGNING_STORE_FILE")
+val privateReleaseStorePassword = System.getenv("SNOREGUARD_SIGNING_STORE_PASSWORD")
+val privateReleaseAlias = System.getenv("SNOREGUARD_SIGNING_KEY_ALIAS")
+val privateReleaseKeyPassword = System.getenv("SNOREGUARD_SIGNING_KEY_PASSWORD")
+val privateReleaseConfigured = listOf(
+    privateReleaseStore, privateReleaseStorePassword,
+    privateReleaseAlias, privateReleaseKeyPassword
+).all { !it.isNullOrBlank() }
+
 android {
     namespace = "rs.snoreguard.mvp"
     compileSdk = 35
@@ -15,13 +26,26 @@ android {
         applicationId = "rs.snoreguard.mvp"
         minSdk = 26
         targetSdk = 35
-        versionCode = 70
-        versionName = "0.7.0"
+        versionCode = 71
+        versionName = "0.7.1"
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
+    }
+    signingConfigs {
+        if (privateReleaseConfigured) {
+            create("privateRelease") {
+                storeFile = file(privateReleaseStore!!)
+                storePassword = privateReleaseStorePassword!!
+                keyAlias = privateReleaseAlias!!
+                keyPassword = privateReleaseKeyPassword!!
+            }
+        }
     }
     buildTypes {
         release {
             isMinifyEnabled = false
+            if (privateReleaseConfigured) {
+                signingConfig = signingConfigs.getByName("privateRelease")
+            }
         }
     }
     compileOptions {

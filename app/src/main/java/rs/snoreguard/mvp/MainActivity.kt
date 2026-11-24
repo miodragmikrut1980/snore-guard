@@ -61,6 +61,8 @@ class MainActivity : Activity() {
     private lateinit var hourlyDetails: TextView
     private lateinit var comparisonDetails: TextView
     private lateinit var exportStatus: TextView
+    private lateinit var fullBackupStatus: TextView
+    @Volatile private var fullBackupBusy = false
     private lateinit var clipStore: SnoreClipStore
     private lateinit var clipList: LinearLayout
     private lateinit var clipCountText: TextView
@@ -118,6 +120,38 @@ class MainActivity : Activity() {
         hourlyDetails = findViewById(R.id.hourlyDetails)
         comparisonDetails = findViewById(R.id.comparisonDetails)
         exportStatus = findViewById(R.id.exportStatus)
+        fullBackupStatus = findViewById(R.id.fullBackupStatus)
+        findViewById<Button>(R.id.fullExportButton).setOnClickListener {
+            if (MonitorService.isActive || fullBackupBusy) {
+                toast("Zaustavi praćenje pre potpune rezervne kopije.")
+            } else {
+                AlertDialog.Builder(this)
+                    .setTitle("Izvezi privatne snimke i statistiku?")
+                    .setMessage("ZIP sadrži stvarne WAV snimke, ocene, beleške i istoriju. " +
+                        "Nije šifrovan; čuvaj ga na privatnoj lokaciji i ne deli javno. " +
+                        "Izvoz radi samo kada praćenje nije aktivno.")
+                    .setNegativeButton("Otkaži", null)
+                    .setPositiveButton("Nastavi") { _, _ ->
+                        val date = SimpleDateFormat("yyyy-MM-dd", Locale.ROOT).format(Date())
+                        createDocument("application/zip", "SnoreGuard-kompletna-kopija-" +
+                            date + ".zip", REQUEST_FULL_EXPORT)
+                    }.show()
+            }
+        }
+        findViewById<Button>(R.id.fullImportButton).setOnClickListener {
+            if (MonitorService.isActive || fullBackupBusy) {
+                toast("Zaustavi praćenje pre importa podataka.")
+            } else {
+                val intent = Intent(Intent.ACTION_OPEN_DOCUMENT).apply {
+                    addCategory(Intent.CATEGORY_OPENABLE)
+                    type = "*/*"
+                    putExtra(Intent.EXTRA_MIME_TYPES, arrayOf(
+                        "application/zip", "application/x-zip-compressed",
+                        "application/octet-stream"))
+                }
+                startActivityForResult(intent, REQUEST_FULL_IMPORT)
+            }
+        }
         clipList = findViewById(R.id.clipList)
         clipCountText = findViewById(R.id.clipCountText)
         recordingDescription = findViewById(R.id.recordingDescription)
@@ -316,13 +350,19 @@ class MainActivity : Activity() {
         val running = MonitorService.isActive
         val testing = running && MonitorService.isTestSession
         startStop.text = if (running) "Zaustavi praćenje" else "Pokreni praćenje"
+        startStop.isEnabled = !fullBackupBusy
+        findViewById<Button>(R.id.fullExportButton).isEnabled =
+            !fullBackupBusy && !running
+        findViewById<Button>(R.id.fullImportButton).isEnabled =
+            !fullBackupBusy && !running
         status.text = when {
             testing -> "● Test prepoznavanja hrkanja je aktivan"
             running -> "● Praćenje je aktivno"
             else -> "● Praćenje nije aktivno"
         }
         if (!running) testStopRequested = false
-        snoreTestButton.isEnabled = !running || (testing && !testStopRequested)
+        snoreTestButton.isEnabled = (!running || (testing && !testStopRequested)) &&
+            !fullBackupBusy
         snoreTestButton.text = when {
             testing && testStopRequested -> "Zaustavljam test…"
             testing -> "Zaustavi test hrkanja"
@@ -451,6 +491,43 @@ class MainActivity : Activity() {
         startActivityForResult(intent, requestCode)
     }
 
+    /**
+     * Runs ZIP archiving off the UI thread. Prevents starting recording while
+     * files and history are being moved, and handles failure visibly.
+     */
+    private fun runFullBackupTask(statusMessage: String, work: () -> String) {
+        if (fullBackupBusy || MonitorService.isActive) {
+            toast("Zaustavi praćenje ili sačekaj završetak prethodne operacije.")
+            return
+        }
+        fullBackupBusy = true
+        fullBackupStatus.text = statusMessage
+        refresh()
+        Thread({
+            val result = try {
+                if (MonitorService.isActive) {
+                    "✗ Praćenje je aktivno. Prekini ga pre rezervne kopije."
+                } else work()
+            } catch (error: Exception) {
+                "✗ Potpuna kopija nije uspela: " +
+                    (error.message ?: error.javaClass.simpleName)
+            }
+            runOnUiThread {
+                fullBackupBusy = false
+                if (!isDestroyed && !isFinishing) {
+                    fullBackupStatus.text = result
+                    settings = Settings(this)
+                    updateWindowButtons()
+                    setupProfileControls()
+                    findViewById<Switch>(R.id.phoneVibrationSwitch).isChecked =
+                        settings.phoneVibration
+                    lastClipSignature = ""
+                    refresh()
+                }
+            }
+        }, "SnoreGuardFullBackup").start()
+    }
+
     @Deprecated("Uses platform SAF callbacks to support Android 8 without AndroidX")
     override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
         super.onActivityResult(requestCode, resultCode, data)
@@ -458,6 +535,39 @@ class MainActivity : Activity() {
         val uri = data?.data ?: return
         try {
             when (requestCode) {
+                REQUEST_FULL_EXPORT -> {
+                    val archive = FullBackupArchive(applicationContext)
+                    runFullBackupTask("Pravim kompletnu ZIP rezervnu kopiju…") {
+                        val (nights, audio) = archive.exportTo(uri)
+                        "✓ ZIP sačuvan: $nights završenih noći i $audio WAV snimaka. " +
+                            "Sačuvaj datoteku na bezbednom mestu."
+                    }
+                }
+                REQUEST_FULL_IMPORT -> {
+                    if (MonitorService.isActive || fullBackupBusy) {
+                        toast("Zaustavi praćenje pre importa.")
+                        return
+                    }
+                    AlertDialog.Builder(this)
+                        .setTitle("Import kompletne ZIP kopije?")
+                        .setMessage("ZIP može da sadrži osetljive WAV snimke i beleške. " +
+                            "Aplikacija će proveriti integritet i spojiti istoriju i " +
+                            "snimke. Postojeći WAV snimci se ne prepisuju. " +
+                            "Moguće je uvesti samo onoliko novih snimaka koliko ima " +
+                            "slobodnih mesta do ograničenja od 40. " +
+                            "Podešavanja iz kopije će biti vraćena.")
+                        .setNegativeButton("Otkaži", null)
+                        .setPositiveButton("Proveri i importuj") { _, _ ->
+                            val archive = FullBackupArchive(applicationContext)
+                            runFullBackupTask("Proveravam ZIP, SHA-256 i WAV snimke…") {
+                                val r = archive.restoreFrom(uri)
+                                "✓ Import završen: ${r.nightsImported} novih noći, " +
+                                    "${r.clipsImported} WAV snimaka. " +
+                                    "Postojećih snimaka: ${r.clipsAlreadyPresent}, " +
+                                    "preskočeno zbog ograničenja: ${r.clipsSkippedAtCapacity}."
+                            }
+                        }.show()
+                }
                 REQUEST_EXPORT_CSV, REQUEST_BACKUP, REQUEST_EXPORT_CLIP_REVIEWS -> {
                     val content = when (requestCode) {
                         REQUEST_EXPORT_CSV -> store.exportCsv()
@@ -860,5 +970,7 @@ class MainActivity : Activity() {
         private const val REQUEST_BACKUP = 5002
         private const val REQUEST_RESTORE = 5003
         private const val REQUEST_EXPORT_CLIP_REVIEWS = 5004
+        private const val REQUEST_FULL_EXPORT = 6001
+        private const val REQUEST_FULL_IMPORT = 6002
     }
 }

@@ -1,3 +1,37 @@
+# SnoreGuard v0.7.1 — complete backup / safe update test plan
+
+## GitHub build and static checks
+- [ ] ./gradlew testDebugUnitTest assembleDebug succeeds on Android SDK 35 and JDK 17
+- [ ] Existing detection, monitor schedule, WAV review, CSV, and notification tests remain green
+- [ ] FullBackupArchiveTest: rejects traversal paths, invalid WAV headers, bad checksums
+- [ ] Never add *.jks, *.keystore, passwords, or base64 keys to Git
+- [ ] Regular CI still emits DEBUG APK only; manual release signing workflow blocks without secrets
+
+## Device tests (Xiaomi 14T)
+- [ ] Before exporting ZIP, stop monitoring; start test / monitor should not run during ZIP I/O
+- [ ] ZIP export: inspect manifest.json, statistics.json and clips/<wav> for actual saved WAVs
+- [ ] Export with no recorded clips: ZIP still valid and imports just stats/settings
+- [ ] Export with two WAVs labeled Hrkanje and Lažni alarm plus notes: restore and confirm labels, WAV playback, counts and notes
+- [ ] Import same backup twice: existing sessions and clips not duplicated
+- [ ] Import ZIP on clean installation: restore all user data including sound
+- [ ] Import ZIP on device with >0 local WAVs: local WAVs and notes unchanged
+- [ ] Import when all 40 slots occupied: new WAVs skipped, count shown, existing WAVs unchanged
+- [ ] Corrupt statistics digest or WAV byte: reject before changing existing storage
+- [ ] ZIP with ../ path, nested file path, unknown entry, >40 clips or oversized decompression rejected
+- [ ] Import ZIP while monitoring active: blocked
+- [ ] No INTERNET permission; no automatic uploading to Google Drive or elsewhere
+- [ ] Audio ZIP is plain, not encrypted: retain on a private encrypted storage location
+
+## Signing (manual, requires your private key)
+- [ ] Create long-lived JKS only on owner's trusted computer
+- [ ] Configure five GitHub Actions secrets and backup JKS securely outside GitHub
+- [ ] Run Signed SnoreGuard release APK workflow; APK must match expected SHA-256 cert
+- [ ] Back up old debug installation to ZIP before first signed-release migration
+- [ ] After first signed release, later releases with the SAME cert update in place and preserve all settings/data
+
+## Clinical note
+Audio clips and AI labels are not a medical diagnosis or replacement for a sleep study.
+
 # SnoreGuard v0.7.0 — review and diagnostic test plan
 
 ## CI

@@ -35,6 +35,10 @@ data class SnoreClip(
     val note: String = ""
 )
 
+/** Fully validated audio staged in an app-private temporary folder. */
+data class StagedSnoreClip(val clip: SnoreClip, val file: File)
+data class ClipMergeResult(val imported: Int, val alreadyPresent: Int, val skippedDueToLimit: Int)
+
 class SnoreClipStore(context: Context) {
     private val lock = Any()
     private val prefs = context.getSharedPreferences("snoreguard_audio_clips", Context.MODE_PRIVATE)
@@ -159,6 +163,68 @@ class SnoreClipStore(context: Context) {
                     clip.bytes.toString()
                 ))).append("\r\n")
             }
+        }
+    }
+
+    /**
+     * Merge a validated ZIP archive into free clip slots.
+     * Existing WAVs and user reviews always take priority and are never overwritten.
+     * A full collection causes incoming clips to be SKIPPED, not local clips removed.
+     */
+    fun importStaged(incoming: List<StagedSnoreClip>): ClipMergeResult = synchronized(lock) {
+        require(incoming.size <= MAX_STORED_CLIPS) { "Previše WAV snimaka." }
+        val existing = list()
+        val names = existing.map { it.filename }.toHashSet()
+        val seen = HashSet<String>()
+        var already = 0
+        var skipped = 0
+        val toCopy = ArrayList<StagedSnoreClip>()
+        for (incomingClip in incoming.sortedByDescending { it.clip.recordedAt }) {
+            val c = incomingClip.clip
+            require(validFile.matches(c.filename) && seen.add(c.filename) &&
+                incomingClip.file.isFile && incomingClip.file.length() == c.bytes) {
+                "Neispravan ili dupliran WAV snimak."
+            }
+            if (c.filename in names) {
+                already++
+            } else if (existing.size + toCopy.size >= MAX_STORED_CLIPS) {
+                skipped++
+            } else {
+                check(!File(dir, c.filename).exists()) {
+                    "Neidentifikovan WAV fajl sa istim imenom je već na uređaju."
+                }
+                toCopy.add(incomingClip)
+            }
+        }
+        if (toCopy.isEmpty()) return@synchronized ClipMergeResult(0, already, skipped)
+        check(dir.isDirectory || dir.mkdirs()) { "Ne mogu da otvorim WAV folder." }
+        val copiedFiles = ArrayList<File>()
+        try {
+            for (candidate in toCopy) {
+                val dest = File(dir, candidate.clip.filename)
+                candidate.file.copyTo(dest, overwrite = false)
+                copiedFiles.add(dest)
+                check(dest.length() == candidate.clip.bytes) { "WAV fajl nije uspešno kopiran." }
+            }
+            val merged = (existing + toCopy.map { it.clip }).sortedByDescending { it.recordedAt }
+            val array = JSONArray()
+            for (clip in merged) {
+                array.put(JSONObject()
+                    .put("filename", clip.filename)
+                    .put("recordedAt", clip.recordedAt)
+                    .put("durationMs", clip.durationMs)
+                    .put("bytes", clip.bytes)
+                    .put("label", clip.label.name)
+                    .put("note", clip.note))
+            }
+            check(prefs.edit().putString("clips", array.toString()).commit()) {
+                "Nije uspelo čuvanje WAV metapodataka."
+            }
+            ClipMergeResult(toCopy.size, already, skipped)
+        } catch (e: Exception) {
+            // A failed merge must never hide or replace previously saved audio.
+            copiedFiles.forEach { it.delete() }
+            throw e
         }
     }
 
