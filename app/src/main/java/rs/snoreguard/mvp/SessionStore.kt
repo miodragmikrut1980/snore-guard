@@ -51,6 +51,8 @@ class SessionStore(context: Context) {
             .put("notifications", 0)
             .put("lastScore", 0.0)
             .put("modelActive", false)
+            .put("alertResponse", AlertResponseRecord.encode(AlertResponseTracker.Snapshot()))
+            .put("smartFollowups", Settings(appContext).smartFollowups && !isTest)
         prefs.edit().putString("active", active.toString()).putString("error", "").apply()
     }
 
@@ -59,7 +61,8 @@ class SessionStore(context: Context) {
         lastScore: Float,
         modelActive: Boolean,
         maxInferenceGapMs: Long = 0L,
-        inferenceGaps5s: Int = 0
+        inferenceGaps5s: Int = 0,
+        responseSnapshot: AlertResponseTracker.Snapshot? = null
     ) = synchronized(lock) {
         val active = activeOrNull() ?: return@synchronized
         active.put("maxInferenceGapMs", maxInferenceGapMs.coerceAtLeast(0L))
@@ -71,6 +74,7 @@ class SessionStore(context: Context) {
             .put("alerts", engine.alerts)
             .put("lastScore", lastScore.toDouble())
             .put("modelActive", modelActive)
+        responseSnapshot?.let { active.put("alertResponse", AlertResponseRecord.encode(it)) }
         prefs.edit().putString("active", active.toString()).apply()
     }
 
@@ -96,6 +100,12 @@ class SessionStore(context: Context) {
         prefs.edit().putString("active", active.toString()).apply()
     }
 
+    fun saveFinalResponse(snapshot: AlertResponseTracker.Snapshot) = synchronized(lock) {
+        val active = activeOrNull() ?: return@synchronized
+        active.put("alertResponse", AlertResponseRecord.encode(snapshot))
+        prefs.edit().putString("active", active.toString()).apply()
+    }
+
     fun fail(message: String) = synchronized(lock) {
         prefs.edit().putString("error", message.take(220)).apply()
     }
@@ -108,6 +118,7 @@ class SessionStore(context: Context) {
             prefs.edit().remove("active").commit()
             return@synchronized
         }
+        AlertResponseRecord.finishInterrupted(active)
         val history = safeArray(prefs.getString("history", "[]"))
         val merged = JSONArray()
         merged.put(active)
@@ -143,6 +154,7 @@ class SessionStore(context: Context) {
                 .put("sensitivity", settings.sensitivity.name)
                 .put("alertMode", settings.alertMode.name)
                 .put("phoneVibration", settings.phoneVibration)
+                .put("smartFollowups", settings.smartFollowups)
                 .put("windowStart", settings.windowStartMinutes)
                 .put("windowEnd", settings.windowEndMinutes))
             .toString(2)
@@ -189,7 +201,8 @@ class SessionStore(context: Context) {
                     }
                 }
             }
-            received.add(JSONObject(obj.toString()))
+            if (obj.has("alertResponse")) require(AlertResponseRecord.read(obj) != null) { "Neispravna analiza alarma." }
+            received.add(JSONObject(obj.toString()).also { AlertResponseRecord.finishInterrupted(it) })
         }
         val preferences = root.optJSONObject("settings")
         val sensitivityName = preferences?.optString("sensitivity")
@@ -239,7 +252,8 @@ class SessionStore(context: Context) {
                     }
                 }
             }
-            received.add(JSONObject(obj.toString()))
+            if (obj.has("alertResponse")) require(AlertResponseRecord.read(obj) != null) { "Neispravna analiza alarma." }
+            received.add(JSONObject(obj.toString()).also { AlertResponseRecord.finishInterrupted(it) })
         }
         val preferences = root.optJSONObject("settings")
         val sensitivityName = preferences?.optString("sensitivity")
@@ -289,6 +303,7 @@ class SessionStore(context: Context) {
             if (modeName != null) settings.alertMode = AlertMode.fromStored(modeName)
             if (preferences.has("windowStart")) settings.windowStartMinutes = startMinutes
             if (preferences.has("windowEnd")) settings.windowEndMinutes = endMinutes
+            if (preferences.has("smartFollowups")) settings.smartFollowups = preferences.optBoolean("smartFollowups", false)
             if (preferences.has("phoneVibration")) {
                 settings.phoneVibration = preferences.optBoolean("phoneVibration")
             }
@@ -302,7 +317,7 @@ class SessionStore(context: Context) {
             "recognized_events", "alarm_series", "posted_notifications",
             "estimated_snoring_seconds", "stop_reason",
             "max_ai_gap_ms", "ai_gaps_over_5s"
-        ) + NightHours.allLabels().map { "hour_${it}_events" }
+        ) + AlertResponseRecord.columns.map { "response_" + it } + NightHours.allLabels().map { "hour_${it}_events" }
         val text = StringBuilder().append(CsvCell.row(columns)).append("\r\n")
         val format = SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ssXXX", Locale.ROOT)
         val records = history()
@@ -324,7 +339,10 @@ class SessionStore(context: Context) {
                 item.optString("stopReason"),
                 if (item.has("maxInferenceGapMs")) item.optLong("maxInferenceGapMs").toString() else "",
                 if (item.has("inferenceGaps5s")) item.optInt("inferenceGaps5s").toString() else ""
-            ) + NightHours.allLabels().map { hour ->
+            ) + AlertResponseRecord.columns.map { key ->
+                val response = AlertResponseRecord.read(item)
+                if (response == null) "" else AlertResponseRecord.encode(response).optInt(key).toString()
+            } + NightHours.allLabels().map { hour ->
                 if (hist == null) "" else hist.optInt(hour, 0).toString()
             }
             text.append(CsvCell.row(values)).append("\r\n")

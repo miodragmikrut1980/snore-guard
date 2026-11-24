@@ -56,6 +56,12 @@ object NightReport {
                     line("Indeks hrkanja (0–100): " + (result.score?.toString() ?: "nedovoljno podataka"))
                 } else line("Normalizovani pokazatelji nisu dostupni.")
                 if (item.has("inferenceGaps5s")) line("AI zastoji preko 5 s: " + item.optInt("inferenceGaps5s"))
+                val response = AlertResponseRecord.read(item)
+                if (response != null) {
+                    line("Reakcije u 60 s: procenjene " + response.assessed + ", nepouzdane " + response.inconclusive, 11f)
+                    line("Smirilo se " + response.quiet + " | vratilo se " + response.returned + " | nastavilo se " + response.continued, 11f)
+                    line("Smart: prekinute dodatne serije " + response.smartSuppressed, 11f)
+                }
                 val matching = clips.filter { it.recordedAt in start..end }
                 val review = NightAnalytics.reviews(matching.map { it.label })
                 line("Sačuvani WAV isečci: " + matching.size)

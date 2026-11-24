@@ -1,5 +1,13 @@
 # Changelog
 
+## v0.8.1 — Observed alarm response and optional smart follow-ups
+- Track 60 seconds after the first posted Android notification: 10 seconds of detected quiet within 30 seconds, recurrence, continuing detection, or inconclusive.
+- Reject observation gaps above 2 seconds, stale buffered audio and interrupted/overlapping windows; test sessions do not enter history.
+- Optional, off-by-default smart follow-ups only reduce later alerts after observed quiet; no increase in alert intensity, unchanged first alert and default mode.
+- Include compact aggregate response counters in UI, JSON/ZIP, CSV and PDF; older sessions remain unmeasured.
+- No proof of physical watch vibration, actual sleep, clinical efficacy or apnea detection.
+- Deterministic unit tests for response and incomplete/stale observations.
+
 ## v0.8.0 — Advanced night analytics
 - Descriptive snore index (rounded percentage of positive AI windows), analyzed time, events per analyzed hour and coverage.
 - Suppress index below 30 minutes analyzed time or 80% coverage; compare up to seven qualifying nights with matching detector and sensitivity.

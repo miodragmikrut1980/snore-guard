@@ -74,6 +74,13 @@
                 android:layout_marginTop="7dp" android:text="Pauza između serija     60 sekundi" android:textColor="@color/text_secondary" android:textSize="14sp" />
             <TextView android:layout_width="match_parent" android:layout_height="wrap_content"
                 android:layout_marginTop="7dp" android:text="Alarmi samo noću     22:00–08:00" android:textColor="@color/text_secondary" android:textSize="14sp" />
+            <Switch android:id="@+id/smartFollowupsSwitch" android:layout_width="match_parent"
+                android:layout_height="wrap_content" android:layout_marginTop="12dp"
+                android:text="Smart upozorenja (eksperimentalno)" android:textColor="@color/text_primary"
+                android:textSize="14sp" android:checked="false" />
+            <TextView android:layout_width="match_parent" android:layout_height="wrap_content"
+                android:text="Opcionalno: prekini dodatne alarme ako AI ne detektuje hrkanje 10 s uz kontinuiranu analizu. Prvi alarm i maksimum režima ostaju isti. Važi od sledeće sesije."
+                android:textSize="12sp" android:textColor="@color/text_secondary" />
             <Switch android:id="@+id/phoneVibrationSwitch" android:layout_width="match_parent" android:layout_height="wrap_content"
                 android:layout_marginTop="14dp" android:text="Vibracija i na telefonu" android:textColor="@color/text_primary"
                 android:textSize="14sp" android:checked="false" />
@@ -187,6 +194,12 @@
             <TextView android:id="@+id/advancedAnalytics" android:layout_width="match_parent"
                 android:layout_height="wrap_content" android:layout_marginTop="10dp"
                 android:textColor="@color/text_primary" android:textSize="14sp" />
+            <TextView android:layout_width="match_parent" android:layout_height="wrap_content"
+                android:layout_marginTop="16dp" android:text="REAKCIJA NAKON ALARMA"
+                android:textStyle="bold" android:textColor="@color/text_primary" android:textSize="15sp" />
+            <TextView android:id="@+id/alertResponseDetails" android:layout_width="match_parent"
+                android:layout_height="wrap_content" android:layout_marginTop="8dp"
+                android:textColor="@color/text_secondary" android:textSize="13sp" />
             <Button android:id="@+id/doctorPdfButton" android:layout_width="match_parent"
                 android:layout_height="50dp" android:layout_marginTop="12dp"
                 android:text="Izveštaj za lekara (PDF)" android:textAllCaps="false"

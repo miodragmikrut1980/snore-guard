@@ -56,6 +56,16 @@ object AlertNotifier {
             .build()
     }
 
+    /** Whether the current channel is allowed to post; not a watch-delivery receipt. */
+    fun canPostWatchAlert(context: Context): Boolean {
+        ensureChannels(context)
+        val nm = context.getSystemService(NotificationManager::class.java)
+        val channel = if (Settings(context).phoneVibration) VIBRATE_CHANNEL else SILENT_CHANNEL
+        return nm.areNotificationsEnabled() &&
+            (nm.getNotificationChannel(channel)?.importance ?: NotificationManager.IMPORTANCE_NONE) !=
+                NotificationManager.IMPORTANCE_NONE
+    }
+
     /** Each burst step is a NEW notification: never overwrite the previous step. */
     fun sendWatchAlert(context: Context, test: Boolean, step: Int = 1, totalSteps: Int = 3) {
         ensureChannels(context)

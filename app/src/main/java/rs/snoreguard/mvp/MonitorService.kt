@@ -40,6 +40,8 @@ class MonitorService : Service() {
     private var activeWindowStart = LocalTime.of(22, 0)
     private var activeWindowEnd = LocalTime.of(8, 0)
     private var saveClips = false
+    private var smartFollowups = false
+    private var response = AlertResponseTracker { SystemClock.elapsedRealtime() }
 
     private fun allowedNow(): Boolean =
         if (sessionTesting) SystemClock.elapsedRealtime() - testStartedElapsed < TEST_DURATION_MS
@@ -52,10 +54,13 @@ class MonitorService : Service() {
                 lastPositiveRealtime >= 0L &&
                 SystemClock.elapsedRealtime() - lastPositiveRealtime <= burstQuietTimeoutMillis
         },
+        canDeliverStep = { step -> step == 1 || !smartFollowups || sessionTesting || !response.suppressFollowup() },
         emit = { step ->
             try {
+                check(AlertNotifier.canPostWatchAlert(this)) { "Android obaveštenja nisu dozvoljena." }
                 AlertNotifier.sendWatchAlert(this, test = sessionTesting, step = step, totalSteps = mode.steps)
                 store.incrementNotifications()
+                if (step == 1 && !sessionTesting) response.firstPosted()
             } catch (e: Exception) {
                 store.fail("Upozorenje nije poslato: ${e.message}")
                 throw e // AlarmBurst will cancel the rest of this series.
@@ -122,6 +127,8 @@ class MonitorService : Service() {
         activeSensitivity = preferences.sensitivity
         activeMode = preferences.alertMode
         saveClips = preferences.saveSnoreClips && !test
+        smartFollowups = preferences.smartFollowups && !test
+        response = AlertResponseTracker { SystemClock.elapsedRealtime() }
         stoppedByUser = false
         alertBurst = newBurst(activeMode)
         store.recoverInterrupted()
@@ -168,7 +175,7 @@ class MonitorService : Service() {
             check(audio.recordingState == AudioRecord.RECORDSTATE_RECORDING) { "Mikrofon ne snima" }
             store.update(engine, lastScore, modelActive = true,
                 maxInferenceGapMs = analysisGaps.maxGapMillis,
-                inferenceGaps5s = analysisGaps.stalls)
+                inferenceGaps5s = analysisGaps.stalls, responseSnapshot = response.snapshot())
 
             // YAMNet requires 15,600 samples (~975 ms). Re-analyse every
             // 4,000 NEW samples (250 ms), retaining the previous 11,600.
@@ -211,8 +218,11 @@ class MonitorService : Service() {
                 clipCapture.accept(rolling.samples, offset, count)
 
                 lastScore = classifier.classify(rolling.samples)
-                analysisGaps.record(SystemClock.elapsedRealtime())
+                val completedAt = SystemClock.elapsedRealtime()
+                analysisGaps.record(completedAt)
                 val snore = lastScore >= activeSensitivity.modelThreshold
+                if (!sessionTesting) response.frame(snore,
+                    kotlin.math.abs(completedAt - (audioStartElapsed + sampleTimeMs)) <= AlertResponseTracker.MAX_GAP_MS)
                 if (snore) lastPositiveRealtime = SystemClock.elapsedRealtime()
 
                 // Detector uses AUDIO sample time, preventing slow inference
@@ -231,13 +241,13 @@ class MonitorService : Service() {
                     clipCapture.trigger()
                     store.update(engine, lastScore, modelActive = true,
                 maxInferenceGapMs = analysisGaps.maxGapMillis,
-                inferenceGaps5s = analysisGaps.stalls)
+                inferenceGaps5s = analysisGaps.stalls, responseSnapshot = response.snapshot())
                     mainHandler.post { if (recording) alertBurst.start() }
                 }
                 if (engine.analysedFrames % 20 == 0) {
                     store.update(engine, lastScore, modelActive = true,
                 maxInferenceGapMs = analysisGaps.maxGapMillis,
-                inferenceGaps5s = analysisGaps.stalls)
+                inferenceGaps5s = analysisGaps.stalls, responseSnapshot = response.snapshot())
                 }
             }
         } catch (e: Exception) {
@@ -258,7 +268,8 @@ class MonitorService : Service() {
             wakeLock = null
             store.update(engine, lastScore, modelActive = classifier != null,
                 maxInferenceGapMs = analysisGaps.maxGapMillis,
-                inferenceGaps5s = analysisGaps.stalls)
+                inferenceGaps5s = analysisGaps.stalls, responseSnapshot = response.snapshot())
+            store.saveFinalResponse(response.finish())
             store.finish(if (stoppedByUser) "Ručno zaustavljeno" else finishReason)
             isActive = false
             isTestSession = false

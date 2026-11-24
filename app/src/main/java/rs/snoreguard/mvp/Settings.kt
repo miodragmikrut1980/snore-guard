@@ -9,6 +9,11 @@ class Settings(context: Context) {
         get() = prefs.getBoolean("phone_vibration", false)
         set(value) { prefs.edit().putBoolean("phone_vibration", value).apply() }
 
+    /** Experimental reduction of later alerts; off for all existing installs. */
+    var smartFollowups: Boolean
+        get() = prefs.getBoolean("smart_followups", false)
+        set(value) { prefs.edit().putBoolean("smart_followups", value).apply() }
+
     var sensitivity: Sensitivity
         get() = Sensitivity.fromStored(prefs.getString("sensitivity", null))
         set(value) { prefs.edit().putString("sensitivity", value.name).apply() }

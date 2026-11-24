@@ -16,6 +16,7 @@ class AlarmBurst(
     private val canContinue: () -> Boolean,
     private val totalAlerts: Int = TOTAL_ALERTS,
     private val intervalMillis: Long = INTERVAL_MILLIS,
+    private val canDeliverStep: (Int) -> Boolean = { true },
     private val emit: (step: Int) -> Unit
 ) {
     init {
@@ -36,7 +37,7 @@ class AlarmBurst(
 
     private fun deliver(token: Long, step: Int) {
         if (!isRunning || token != generation) return
-        if (!canContinue()) {
+        if (!canContinue() || !canDeliverStep(step)) {
             cancel()
             return
         }

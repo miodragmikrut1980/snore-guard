@@ -254,6 +254,10 @@ class MainActivity : Activity() {
             }
         }
 
+        val smart = findViewById<Switch>(R.id.smartFollowupsSwitch)
+        smart.isChecked = settings.smartFollowups
+        smart.setOnCheckedChangeListener { _, checked -> settings.smartFollowups = checked }
+
         val vibration = findViewById<Switch>(R.id.phoneVibrationSwitch)
         vibration.isChecked = settings.phoneVibration
         vibration.setOnCheckedChangeListener { _, checked ->
@@ -408,6 +412,7 @@ class MainActivity : Activity() {
         showHistory()
         showCharts(latest)
         showAdvancedAnalytics(latest, active != null)
+        showAlertResponse(latest)
         showSavedClips()
         errors.text = store.error()
     }
@@ -499,6 +504,21 @@ class MainActivity : Activity() {
         }
     }
 
+    private fun showAlertResponse(item: JSONObject?) {
+        val target = findViewById<TextView>(R.id.alertResponseDetails)
+        val r = AlertResponseRecord.read(item)
+        target.text = when {
+            item?.optBoolean("isTest") == true -> "Probni režim ne beleži reakcije tokom noći."
+            r == null -> "Dostupno za nove sesije od v0.8.1."
+            else -> "Započete serije: ${r.started} • procenjene: ${r.assessed}\n" +
+                "Smirilo se: ${r.quiet} • vratilo se: ${r.returned} • nastavilo se: ${r.continued}\n" +
+                "Nepouzdano: ${r.inconclusive} • u toku: ${r.pending}\n" +
+                "Smart režim: zaustavljeno dodatnih serija ${r.smartSuppressed}.\n" +
+                "Smirivanje: 10 s bez detekcije u prvih 30 s; posmatranje ukupno 60 s. " +
+                "Ovo ne potvrđuje vibraciju sata niti njen efekat."
+        }
+    }
+
     private fun showAdvancedAnalytics(item: JSONObject?, active: Boolean) {
         val view = findViewById<TextView>(R.id.advancedAnalytics)
         val result = item?.let { NightReport.metrics(it, if (active) System.currentTimeMillis() else it.optLong("end")) }
@@ -556,6 +576,7 @@ class MainActivity : Activity() {
                     setupProfileControls()
                     findViewById<Switch>(R.id.phoneVibrationSwitch).isChecked =
                         settings.phoneVibration
+                    findViewById<Switch>(R.id.smartFollowupsSwitch).isChecked = settings.smartFollowups
                     lastClipSignature = ""
                     refresh()
                 }
