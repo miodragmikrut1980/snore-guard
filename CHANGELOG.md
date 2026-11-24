@@ -1,5 +1,15 @@
 # Changelog
 
+## v0.6.1 — Clearly labeled statistics export/import
+- Move the data transfer panel to just below the current monitoring statistics; label JSON export/import and CSV spreadsheet export separately.
+- JSON export includes completed sessions and settings. JSON import verifies input, deduplicates, merges and restores preferences on confirmation.
+- Increase stored history and backup/import capacity from 30 to 365 completed nights.
+- Increase import read cap from 500,000 to 1,000,000 characters; the importer enforces a 2 MB UTF-8 payload cap.
+- Count only successfully retained imported sessions in confirmation status.
+- Validate all 24 hourly counters in backup records, including custom daytime monitoring schedules.
+- Prohibit a JSON export while monitoring is active, to avoid losing the unfinished current night in a backup.
+- CSV remains export-only; audio WAV files are not included in JSON.
+
 ## v0.6.0 — Optional short WAV recordings, flexible hours and anytime microphone test
 - Explicit opt-in for 3s pre-roll + 9s post-roll WAV excerpt recording after two distinct snoring events.
 - Private on-device 16 kHz mono PCM storage; at most 10 clips per night, at least 20 min between starts and 40 total.

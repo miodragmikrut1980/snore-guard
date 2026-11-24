@@ -10,6 +10,10 @@ import java.util.Locale
 
 /** Private app storage. No raw microphone data, recordings, or network uploads. */
 class SessionStore(context: Context) {
+    companion object {
+        const val MAX_HISTORY = 365
+        const val MAX_BACKUP_BYTES = 2_000_000
+    }
     private val appContext = context.applicationContext
     private val prefs = context.getSharedPreferences("snoreguard_sessions", Context.MODE_PRIVATE)
     private val lock = Any()
@@ -97,7 +101,7 @@ class SessionStore(context: Context) {
         val history = safeArray(prefs.getString("history", "[]"))
         val merged = JSONArray()
         merged.put(active)
-        for (i in 0 until minOf(29, history.length())) merged.put(history.getJSONObject(i))
+        for (i in 0 until minOf(MAX_HISTORY - 1, history.length())) merged.put(history.getJSONObject(i))
         prefs.edit().remove("active").putString("history", merged.toString()).commit()
     }
 
@@ -136,12 +140,12 @@ class SessionStore(context: Context) {
 
     /**
      * Merge imported completed sessions with local ones. Never delete valid
-     * local sessions to make space for older imported entries. Up to 30 newest
+     * local sessions to make space for older imported entries. Up to 365 newest
      * unique records are retained, matching the existing history limit.
      * Validation completes before any persistent settings are changed.
      */
     fun importBackup(raw: String): Int = synchronized(lock) {
-        require(raw.toByteArray(Charsets.UTF_8).size <= 1_000_000) {
+        require(raw.toByteArray(Charsets.UTF_8).size <= MAX_BACKUP_BYTES) {
             "Rezervna kopija je prevelika."
         }
         val root = JSONObject(raw)
@@ -150,7 +154,7 @@ class SessionStore(context: Context) {
         }
         val incoming = root.optJSONArray("history")
             ?: throw IllegalArgumentException("Nedostaje istorija.")
-        require(incoming.length() <= 100) { "Previše sesija u rezervnoj kopiji." }
+        require(incoming.length() <= MAX_HISTORY) { "Previše sesija u rezervnoj kopiji." }
         val received = mutableListOf<JSONObject>()
         for (i in 0 until incoming.length()) {
             val obj = incoming.optJSONObject(i)
@@ -165,7 +169,7 @@ class SessionStore(context: Context) {
             }
             val histogram = obj.optJSONObject("hourly")
             if (histogram != null) {
-                for (hour in NightHours.labels()) {
+                for (hour in NightHours.allLabels()) {
                     require(histogram.optInt(hour, 0) in 0..1_000_000) {
                         "Neispravan satni podatak."
                     }
@@ -197,17 +201,21 @@ class SessionStore(context: Context) {
             val key = "${entry.optLong("start")}:${entry.optLong("end")}"
             if (seen.add(key)) merged.add(entry)
         }
-        var imported = 0
+        val addedKeys = HashSet<String>()
         for (entry in received) {
             val key = "${entry.optLong("start")}:${entry.optLong("end")}"
             if (seen.add(key)) {
                 merged.add(entry)
-                imported++
+                addedKeys.add(key)
             }
         }
         merged.sortByDescending { it.optLong("start") }
+        val retained = merged.take(MAX_HISTORY)
+        val imported = retained.count {
+            "${it.optLong("start")}:${it.optLong("end")}" in addedKeys
+        }
         val compact = JSONArray()
-        merged.take(30).forEach { compact.put(it) }
+        retained.forEach { compact.put(it) }
         check(prefs.edit().putString("history", compact.toString()).commit()) {
             "Čuvanje rezervne kopije nije uspelo."
         }

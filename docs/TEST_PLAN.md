@@ -1,3 +1,31 @@
+# SnoreGuard v0.6.1 — statistics export/import checks
+
+## Automated
+- [ ] `./gradlew testDebugUnitTest assembleDebug` succeeds (JDK 17 / SDK 35)
+- [ ] All prior schedule, snoring, WAV, CSV, alert-burst tests pass
+
+## Android device
+- [ ] Export/import panel appears below current session, before detailed graphs
+- [ ] JSON export while monitoring prompts to stop first
+- [ ] Completed JSON export is a valid app=SnoreGuard, schema=1 document with history and settings
+- [ ] Import the same JSON twice, verify no duplicate night records
+- [ ] Import JSON on a fresh installation, verify night history and settings match
+- [ ] Legacy v0.5.0 / v0.6.0 JSON backups import successfully
+- [ ] With 365 completed sessions, 366th newest pushes oldest out while preserving count=365
+- [ ] Imported records with invalid start/end or hourly histogram data are rejected without corrupting existing history
+- [ ] Incoming JSON file exceeding configured size is rejected
+- [ ] Imported count includes only genuinely new records retained after the 365-night limit
+- [ ] CSV opens in Excel; CSV must not be presented as an importable format
+- [ ] Confirm no WAV audio is present in the JSON backup
+- [ ] Debug-signature upgrade may be rejected; export JSON before uninstalling
+- [ ] Verify all original snore detection, manual testing, custom schedule and sound controls on Xiaomi 14T and Huawei GT 2
+
+## Safety
+- [ ] App has no INTERNET permission
+- [ ] Data export uses Android's system file picker
+- [ ] Statistics transfer must not start or record the microphone
+- [ ] Import does not imply medical diagnosis or treatment
+
 # SnoreGuard v0.6.0 — test and privacy checklist
 
 ## CI

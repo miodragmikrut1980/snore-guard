@@ -148,11 +148,16 @@ class MainActivity : Activity() {
             createDocument("text/csv", "SnoreGuard-statistika.csv", REQUEST_EXPORT_CSV)
         }
         findViewById<Button>(R.id.backupButton).setOnClickListener {
-            createDocument("application/json", "SnoreGuard-backup.json", REQUEST_BACKUP)
+            if (MonitorService.isActive) {
+                toast("Zaustavi praćenje da bi i trenutna noć ušla u export.")
+            } else {
+                val date = SimpleDateFormat("yyyy-MM-dd", Locale.ROOT).format(Date())
+                createDocument("application/json", "SnoreGuard-statistika-$date.json", REQUEST_BACKUP)
+            }
         }
         findViewById<Button>(R.id.restoreButton).setOnClickListener {
             if (MonitorService.isActive) {
-                toast("Zaustavi praćenje pre vraćanja rezervne kopije.")
+                toast("Zaustavi praćenje pre importa statistike.")
             } else {
                 val intent = Intent(Intent.ACTION_OPEN_DOCUMENT).apply {
                     addCategory(Intent.CATEGORY_OPENABLE)
@@ -428,7 +433,7 @@ class MainActivity : Activity() {
                     exportStatus.text = if (requestCode == REQUEST_EXPORT_CSV) {
                         "✓ CSV statistika je sačuvana u izabranom folderu."
                     } else {
-                        "✓ Rezervna kopija je sačuvana. Čuvaj je na bezbednom mestu."
+                        "✓ Export završen: ${store.history().length()} završenih noći sa podešavanjima. Sačuvaj JSON fajl."
                     }
                 }
                 REQUEST_RESTORE -> {
@@ -439,26 +444,28 @@ class MainActivity : Activity() {
                     val source = contentResolver.openInputStream(uri)
                         ?: throw IllegalStateException("Ne mogu da pročitam fajl.")
                     val content = source.bufferedReader(Charsets.UTF_8).use { reader ->
-                        val limited = CharArray(500_001)
+                        val limited = CharArray(1_000_001)
                         var filled = 0
                         while (filled < limited.size) {
                             val count = reader.read(limited, filled, limited.size - filled)
                             if (count < 0) break
                             filled += count
                         }
-                        require(filled <= 500_000) { "Prevelika rezervna kopija." }
+                        require(filled <= 1_000_000) { "Prevelika datoteka za import." }
                         String(limited, 0, filled)
                     }
                     AlertDialog.Builder(this)
-                        .setTitle("Vrati rezervnu kopiju?")
-                        .setMessage("Dodaće se nedostajuće završene sesije (najviše 30). " +
-                            "Postojeće sesije se neće brisati namerno, ali starije mogu ispasti " +
-                            "zbog ograničenja na 30. Vratiće se i podešavanja.")
+                        .setTitle("Import statistike?")
+                        .setMessage("JSON fajl će dodati nedostajuće završene noći u istoriju. " +
+                            "Postojeće sesije se ne dupliraju; čuva se najnovijih 365. " +
+                            "Vratiće se i podešavanja alarma i vremena praćenja. " +
+                            "WAV zvučni snimci nisu deo ovog importa.")
                         .setNegativeButton("Otkaži", null)
-                        .setPositiveButton("Vrati") { _, _ ->
+                        .setPositiveButton("Importuj") { _, _ ->
                             try {
                                 val imported = store.importBackup(content)
-                                exportStatus.text = "✓ Uvezeno $imported novih sesija."
+                                exportStatus.text = "✓ Import završen: $imported novih noći; " +
+                                    "ukupno ${store.history().length()} sačuvanih."
                                 settings = Settings(this)
                                 setupProfileControls()
                                 updateWindowButtons()

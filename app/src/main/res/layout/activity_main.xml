@@ -183,6 +183,30 @@
             android:text="Dijagnostika će biti prikazana tokom praćenja."
             android:textColor="@color/text_secondary" android:textSize="12sp" />
         <TextView android:layout_width="match_parent" android:layout_height="wrap_content"
+            android:layout_marginTop="26dp" android:text="EXPORT I IMPORT STATISTIKE" android:letterSpacing="0.10"
+            android:fontFamily="sans-serif-medium" android:textSize="12sp" android:textColor="@color/text_secondary" />
+        <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content"
+            android:layout_marginTop="9dp" android:background="@drawable/bg_card" android:padding="16dp"
+            android:orientation="vertical">
+            <Button android:id="@+id/backupButton" android:layout_width="match_parent"
+                android:layout_height="50dp"
+                android:text="Export statistike (JSON za čuvanje)" android:textAllCaps="false"
+                android:textColor="@color/text_primary" android:background="@drawable/bg_secondary" />
+            <Button android:id="@+id/restoreButton" android:layout_width="match_parent"
+                android:layout_height="50dp" android:layout_marginTop="9dp"
+                android:text="Import statistike (JSON)" android:textAllCaps="false"
+                android:textColor="@color/text_primary" android:background="@drawable/bg_secondary" />
+            <Button android:id="@+id/exportCsvButton" android:layout_width="match_parent"
+                android:layout_height="50dp" android:layout_marginTop="9dp" android:text="Export statistike (CSV za Excel)"
+                android:textAllCaps="false" android:textColor="@color/text_primary"
+                android:background="@drawable/bg_secondary" />
+            <TextView android:id="@+id/exportStatus" android:layout_width="match_parent"
+                android:layout_height="wrap_content" android:layout_marginTop="10dp"
+                android:text="Za vraćanje podataka koristi JSON: čuva do 365 završenih noći i podešavanja. CSV služi samo za Excel i ne može se importovati. WAV snimci nisu deo izvoza. Sačuvaj JSON pre reinstalacije aplikacije."
+                android:textColor="@color/text_secondary" android:textSize="12sp" />
+        </LinearLayout>
+
+        <TextView android:layout_width="match_parent" android:layout_height="wrap_content"
             android:layout_marginTop="26dp" android:text="HRKANJE PO SATIMA" android:letterSpacing="0.10"
             android:fontFamily="sans-serif-medium" android:textSize="12sp" android:textColor="@color/text_secondary" />
         <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content"
@@ -235,30 +259,6 @@
                 android:text="Dodirni snimak da ga poslušaš, podeliš kao WAV ili obrišeš. Snimanje ne dijagnostikuje apneju."
                 android:textColor="@color/text_secondary" />
         </LinearLayout>
-        <TextView android:layout_width="match_parent" android:layout_height="wrap_content"
-            android:layout_marginTop="26dp" android:text="IZVOZ I REZERVNA KOPIJA" android:letterSpacing="0.10"
-            android:fontFamily="sans-serif-medium" android:textSize="12sp" android:textColor="@color/text_secondary" />
-        <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content"
-            android:layout_marginTop="9dp" android:background="@drawable/bg_card" android:padding="16dp"
-            android:orientation="vertical">
-            <Button android:id="@+id/exportCsvButton" android:layout_width="match_parent"
-                android:layout_height="50dp" android:text="Izvezi statistiku (CSV)"
-                android:textAllCaps="false" android:textColor="@color/text_primary"
-                android:background="@drawable/bg_secondary" />
-            <Button android:id="@+id/backupButton" android:layout_width="match_parent"
-                android:layout_height="50dp" android:layout_marginTop="9dp"
-                android:text="Sačuvaj rezervnu kopiju (JSON)" android:textAllCaps="false"
-                android:textColor="@color/text_primary" android:background="@drawable/bg_secondary" />
-            <Button android:id="@+id/restoreButton" android:layout_width="match_parent"
-                android:layout_height="50dp" android:layout_marginTop="9dp"
-                android:text="Vrati rezervnu kopiju" android:textAllCaps="false"
-                android:textColor="@color/text_primary" android:background="@drawable/bg_secondary" />
-            <TextView android:id="@+id/exportStatus" android:layout_width="match_parent"
-                android:layout_height="wrap_content" android:layout_marginTop="10dp"
-                android:text="Fajlovi ostaju na lokaciji koju izabereš. Ne šalju se na server."
-                android:textColor="@color/text_secondary" android:textSize="12sp" />
-        </LinearLayout>
-
         <TextView android:layout_width="match_parent" android:layout_height="wrap_content"
             android:layout_marginTop="26dp" android:text="PRETHODNE NOĆI" android:letterSpacing="0.10"
             android:fontFamily="sans-serif-medium" android:textSize="12sp" android:textColor="@color/text_secondary" />

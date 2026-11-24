@@ -1,6 +1,18 @@
 # SnoreGuard — Android + Huawei Watch GT 2
 
-**Current version: 0.6.0 (build 60).** Android 8+; Kotlin; local offline YAMNet.
+**Current version: 0.6.1 (build 61).** Android 8+; Kotlin; local offline YAMNet.
+
+## New in v0.6.1
+
+### Export and import statistics — easier to find and safer for APK reinstalls
+
+The statistics transfer area now appears **immediately below the current session's diagnostics**, rather than at the very bottom. Three explicit actions are available:
+
+1. **Export statistike (JSON za čuvanje)**: save all completed session history (up to 365 nights) plus sensitivity, alert mode, phone-vibration option and monitoring start/end times to a local `.json` file. Stop monitoring first so the current night is included.
+2. **Import statistike (JSON)**: select a SnoreGuard JSON export from Android's file picker, then explicitly confirm. Sessions are merged by start/end timestamps, existing duplicates are preserved, and only the newest 365 are kept. Saved settings are restored. Malformed/oversized files are rejected.
+3. **Export statistike (CSV za Excel)**: report for spreadsheet analysis only. **CSV is not importable**; use JSON for transferring statistics to a new installation.
+
+The export does **not** include private WAV audio excerpts, active monitoring, or microphone recordings. Existing older v0.5.0/v0.6.0 JSON backups remain importable. Save the JSON outside the app before uninstalling a debug-signed APK. No network upload is performed.
 
 ## New in v0.6.0
 
