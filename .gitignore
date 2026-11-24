@@ -1,0 +1,11 @@
+.gradle/
+.idea/
+*.iml
+local.properties
+/build/
+/app/build/
+/captures/
+*.apk
+*.aab
+/app/src/main/assets/yamnet.tflite
+.DS_Store
