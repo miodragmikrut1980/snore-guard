@@ -142,6 +142,61 @@
             android:text="Dijagnostika će biti prikazana tokom praćenja."
             android:textColor="@color/text_secondary" android:textSize="12sp" />
         <TextView android:layout_width="match_parent" android:layout_height="wrap_content"
+            android:layout_marginTop="26dp" android:text="HRKANJE PO SATIMA" android:letterSpacing="0.10"
+            android:fontFamily="sans-serif-medium" android:textSize="12sp" android:textColor="@color/text_secondary" />
+        <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content"
+            android:layout_marginTop="9dp" android:background="@drawable/bg_card" android:padding="16dp"
+            android:orientation="vertical">
+            <TextView android:id="@+id/hourlyDetails" android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="Satna statistika dostupna nakon nove sesije."
+                android:textColor="@color/text_secondary" android:textSize="13sp" />
+            <rs.snoreguard.mvp.SnoreBarChartView android:id="@+id/hourlyChart"
+                android:layout_width="match_parent" android:layout_height="190dp"
+                android:layout_marginTop="10dp"
+                android:contentDescription="Grafikon hrkanja od 22 do 08 časova" />
+        </LinearLayout>
+
+        <TextView android:layout_width="match_parent" android:layout_height="wrap_content"
+            android:layout_marginTop="26dp" android:text="POREĐENJE PRETHODNIH NOĆI" android:letterSpacing="0.10"
+            android:fontFamily="sans-serif-medium" android:textSize="12sp" android:textColor="@color/text_secondary" />
+        <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content"
+            android:layout_marginTop="9dp" android:background="@drawable/bg_card" android:padding="16dp"
+            android:orientation="vertical">
+            <TextView android:id="@+id/comparisonDetails" android:layout_width="match_parent"
+                android:layout_height="wrap_content" android:text="Još nema dovoljno podataka za poređenje."
+                android:textColor="@color/text_secondary" android:textSize="13sp" />
+            <rs.snoreguard.mvp.SnoreBarChartView android:id="@+id/comparisonChart"
+                android:layout_width="match_parent" android:layout_height="190dp"
+                android:layout_marginTop="10dp"
+                android:contentDescription="Grafikon prepoznatih hrkanja tokom poslednjih sedam noći" />
+        </LinearLayout>
+
+        <TextView android:layout_width="match_parent" android:layout_height="wrap_content"
+            android:layout_marginTop="26dp" android:text="IZVOZ I REZERVNA KOPIJA" android:letterSpacing="0.10"
+            android:fontFamily="sans-serif-medium" android:textSize="12sp" android:textColor="@color/text_secondary" />
+        <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content"
+            android:layout_marginTop="9dp" android:background="@drawable/bg_card" android:padding="16dp"
+            android:orientation="vertical">
+            <Button android:id="@+id/exportCsvButton" android:layout_width="match_parent"
+                android:layout_height="50dp" android:text="Izvezi statistiku (CSV)"
+                android:textAllCaps="false" android:textColor="@color/text_primary"
+                android:background="@drawable/bg_secondary" />
+            <Button android:id="@+id/backupButton" android:layout_width="match_parent"
+                android:layout_height="50dp" android:layout_marginTop="9dp"
+                android:text="Sačuvaj rezervnu kopiju (JSON)" android:textAllCaps="false"
+                android:textColor="@color/text_primary" android:background="@drawable/bg_secondary" />
+            <Button android:id="@+id/restoreButton" android:layout_width="match_parent"
+                android:layout_height="50dp" android:layout_marginTop="9dp"
+                android:text="Vrati rezervnu kopiju" android:textAllCaps="false"
+                android:textColor="@color/text_primary" android:background="@drawable/bg_secondary" />
+            <TextView android:id="@+id/exportStatus" android:layout_width="match_parent"
+                android:layout_height="wrap_content" android:layout_marginTop="10dp"
+                android:text="Fajlovi ostaju na lokaciji koju izabereš. Ne šalju se na server."
+                android:textColor="@color/text_secondary" android:textSize="12sp" />
+        </LinearLayout>
+
+        <TextView android:layout_width="match_parent" android:layout_height="wrap_content"
             android:layout_marginTop="26dp" android:text="PRETHODNE NOĆI" android:letterSpacing="0.10"
             android:fontFamily="sans-serif-medium" android:textSize="12sp" android:textColor="@color/text_secondary" />
         <TextView android:id="@+id/historyText" android:layout_width="match_parent" android:layout_height="wrap_content"

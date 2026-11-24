@@ -1,30 +1,31 @@
-# Test plan — SnoreGuard v0.3.3 / GT 2
+# Test plan — SnoreGuard v0.5.0 / Huawei GT 2
 
-## Build and unit tests
-- [ ] ./gradlew testDebugUnitTest assembleDebug succeeds (JDK 17 / SDK 35)
-- [ ] Two separated positive audio groups within 15 s start one alarm series
-- [ ] Overlapping 250 ms windows do not double-count one continuous positive group
-- [ ] Positive groups >15 s apart do not start an alarm
-- [ ] Cooldown remains 60 s
-- [ ] Sliding 15,600-sample PCM window retains 11,600 overlapping samples
-- [ ] Installed version visible as v0.3.3 · build 33
-- [ ] Old sessions retain legacy hop size / episodes interpretation
+## Automated build and tests
+- [ ] `./gradlew testDebugUnitTest assembleDebug` passes under JDK 17 / SDK 35
+- [ ] Existing burst and snore-detection tests remain green
+- [ ] 22h,23h,00h,...,07h chart order; out-of-window hours excluded
+- [ ] CSV escapes quotes, commas, newlines and spreadsheet formula prefixes
 
-## Real device: Xiaomi 14T + Huawei GT 2
-- [ ] Confirm 4,000 new PCM samples each ~250 ms on real microphone
-- [ ] Test isolated short snore: one event, no alarm
-- [ ] Test two separated short snores within 15 s: one alarm
-- [ ] Test normal exhalation: no premature cancellation of future vibration
-- [ ] Stop recognizing snoring for >20 s: remaining alerts canceled
-- [ ] Confirm phone notifications at 0/16/32 s during burst
-- [ ] Confirm three GT 2 vibrations in daytime (already worked in v0.3.2)
-- [ ] Confirm real sleep behavior: Huawei Sleep/DND may suppress notifications
-- [ ] Test with screen off, Bluetooth connected and HyperOS battery optimization
-- [ ] Check CPU usage, battery drain and overheating: 4x more TFLite evaluations
-- [ ] Evaluate false positives with TV, speech, fan and household noise
+## Xiaomi 14T functional validation
+- [ ] Start monitoring between 22:00 and 08:00 and confirm no crash
+- [ ] Trigger two distinct positive snore events in 15 seconds
+- [ ] Verify per-hour count increments for one distinct event, not for each sliding 250ms frame
+- [ ] Run across 23:59 to 00:01, confirm counts appear in correct bars
+- [ ] Confirm former v0.4.0 session shows no made-up hourly bars
+- [ ] Confirm last seven completed compatible sessions show correct daily comparison
+- [ ] CSV export via Android file chooser; open CSV in spreadsheet and verify headers/values
+- [ ] JSON backup via file chooser; import back, ensure no duplicate sessions
+- [ ] Restore backup into a fresh installation; verify settings and completed history
+- [ ] Reject malformed JSON; oversized JSON; invalid session times
+- [ ] Attempt restore during active monitoring: must be blocked
+- [ ] Check original night mode, sensitivity profiles and GT 2 daytime notification tests
+- [ ] Verify screen-off behavior, battery optimization, no false notifications due to TV/talking/fan
+- [ ] Validate night monitoring with Huawei Watch GT 2 in Sleep/DND (not established by CI)
 
-## Privacy and limitations
-- [ ] No raw audio stored and no INTERNET permission
-- [ ] Night service only starts by user action between 22:00 and 08:00
-- [ ] Recording stops on STOP or after 08:00
-- [ ] Not a medical apnea monitor or validated treatment
+## Privacy and data
+- [ ] No INTERNET permission or raw audio storage
+- [ ] Exported data contains only counters, event-hour bins, timestamps and preferences
+- [ ] Android `allowBackup=false` unchanged: automatic OS backup not enabled
+- [ ] Debug APK from different CI runs may have incompatible signatures; backup existing stats before uninstall
+
+NOTE: YAMNet detection is heuristic, not clinically validated. Count comparisons do not measure sleep quality, apnea, or treatment effect.

@@ -1,5 +1,14 @@
 # Changelog
 
+## v0.5.0 — Night timelines, comparisons and local backup
+- Persist per-hour recognized distinct snore events for each new session (22:00–08:00).
+- Graph one session by hour and compare up to seven completed nights with matching detector semantics.
+- Export a CSV with 30-session history, count metrics, model metadata and available hourly counts.
+- Export/import versioned JSON of completed sessions and settings via Android system file picker; validate input and merge by start/end timestamps.
+- Keep all microphone inference and report creation offline, without storing raw sound.
+- Unit tests for midnight hour ordering, CSV escaping and spreadsheet formula safety.
+- Preserve historical records, but do not invent hourly data for versions older than 0.5.0.
+
 ## v0.4.0 — Configurable AI and night readiness
 - Three persistent sensitivity profiles, keeping previous HIGH threshold by default.
 - Gentle (1), Normal (2) and Strong (3) separate GT 2 notification series.

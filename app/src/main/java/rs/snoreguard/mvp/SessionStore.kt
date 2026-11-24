@@ -3,9 +3,14 @@ package rs.snoreguard.mvp
 import android.content.Context
 import org.json.JSONArray
 import org.json.JSONObject
+import java.text.SimpleDateFormat
+import java.util.Calendar
+import java.util.Date
+import java.util.Locale
 
 /** Private app storage. No raw microphone data, recordings, or network uploads. */
 class SessionStore(context: Context) {
+    private val appContext = context.applicationContext
     private val prefs = context.getSharedPreferences("snoreguard_sessions", Context.MODE_PRIVATE)
     private val lock = Any()
 
@@ -24,6 +29,8 @@ class SessionStore(context: Context) {
             .put("analysedFrames", 0)
             .put("lastUpdate", System.currentTimeMillis())
             .put("stopReason", "")
+            .put("timelineVersion", 1)
+            .put("hourly", JSONObject())
             .put("episodes", 0)
             .put("alerts", 0)
             .put("notifications", 0)
@@ -41,6 +48,22 @@ class SessionStore(context: Context) {
             .put("alerts", engine.alerts)
             .put("lastScore", lastScore.toDouble())
             .put("modelActive", modelActive)
+        prefs.edit().putString("active", active.toString()).apply()
+    }
+
+    /**
+     * Only DISTINCT snore events are counted (not overlapping AI windows).
+     * Local clock hour labels are from 22:00 to 07:59. No raw audio is saved.
+     */
+    fun recordSnoreAt(timestampMillis: Long) = synchronized(lock) {
+        val active = activeOrNull() ?: return@synchronized
+        val hour = Calendar.getInstance().apply { timeInMillis = timestampMillis }
+            .get(Calendar.HOUR_OF_DAY)
+        if (NightHours.indexOf(hour) < 0) return@synchronized
+        val histogram = active.optJSONObject("hourly") ?: JSONObject()
+        val key = String.format(Locale.ROOT, "%02d", hour)
+        histogram.put(key, histogram.optInt(key, 0) + 1)
+        active.put("hourly", histogram)
         prefs.edit().putString("active", active.toString()).apply()
     }
 
@@ -78,6 +101,140 @@ class SessionStore(context: Context) {
     fun active(): JSONObject? = synchronized(lock) { activeOrNull()?.let { JSONObject(it.toString()) } }
     fun history(): JSONArray = synchronized(lock) { safeArray(prefs.getString("history", "[]")) }
     fun error(): String = synchronized(lock) { prefs.getString("error", "") ?: "" }
+
+    /**
+     * Export only finished sessions plus user preferences. The active microphone
+     * session is not backed up, and no audio or private files leave the device.
+     */
+    fun exportBackup(): String = synchronized(lock) {
+        val settings = Settings(appContext)
+        JSONObject()
+            .put("app", "SnoreGuard")
+            .put("schema", 1)
+            .put("createdAt", System.currentTimeMillis())
+            .put("history", history())
+            .put("settings", JSONObject()
+                .put("sensitivity", settings.sensitivity.name)
+                .put("alertMode", settings.alertMode.name)
+                .put("phoneVibration", settings.phoneVibration))
+            .toString(2)
+    }
+
+    /**
+     * Merge imported completed sessions with local ones. Never delete valid
+     * local sessions to make space for older imported entries. Up to 30 newest
+     * unique records are retained, matching the existing history limit.
+     * Validation completes before any persistent settings are changed.
+     */
+    fun importBackup(raw: String): Int = synchronized(lock) {
+        require(raw.toByteArray(Charsets.UTF_8).size <= 1_000_000) {
+            "Rezervna kopija je prevelika."
+        }
+        val root = JSONObject(raw)
+        require(root.optString("app") == "SnoreGuard" && root.optInt("schema") == 1) {
+            "Nepodržan format rezervne kopije."
+        }
+        val incoming = root.optJSONArray("history")
+            ?: throw IllegalArgumentException("Nedostaje istorija.")
+        require(incoming.length() <= 100) { "Previše sesija u rezervnoj kopiji." }
+        val received = mutableListOf<JSONObject>()
+        for (i in 0 until incoming.length()) {
+            val obj = incoming.optJSONObject(i)
+                ?: throw IllegalArgumentException("Neispravna sesija na poziciji ${i + 1}.")
+            val start = obj.optLong("start")
+            val end = obj.optLong("end")
+            require(start > 0 && end >= start && end - start <= 48L * 60 * 60 * 1000) {
+                "Neispravno vreme sesije ${i + 1}."
+            }
+            require(obj.optInt("episodes") >= 0 && obj.optInt("alerts") >= 0) {
+                "Neispravni brojači sesije ${i + 1}."
+            }
+            val histogram = obj.optJSONObject("hourly")
+            if (histogram != null) {
+                for (hour in NightHours.labels()) {
+                    require(histogram.optInt(hour, 0) in 0..1_000_000) {
+                        "Neispravan satni podatak."
+                    }
+                }
+            }
+            received.add(JSONObject(obj.toString()))
+        }
+        val preferences = root.optJSONObject("settings")
+        val sensitivityName = preferences?.optString("sensitivity")
+        val modeName = preferences?.optString("alertMode")
+        require(sensitivityName == null || Sensitivity.values().any { it.name == sensitivityName }) {
+            "Nepoznata osetljivost u kopiji."
+        }
+        require(modeName == null || AlertMode.values().any { it.name == modeName }) {
+            "Nepoznat režim alarma u kopiji."
+        }
+
+        val merged = mutableListOf<JSONObject>()
+        val seen = HashSet<String>()
+        val local = history()
+        // Local history takes precedence when a session is present in both sets.
+        for (i in 0 until local.length()) {
+            val entry = local.optJSONObject(i) ?: continue
+            val key = "${entry.optLong("start")}:${entry.optLong("end")}"
+            if (seen.add(key)) merged.add(entry)
+        }
+        var imported = 0
+        for (entry in received) {
+            val key = "${entry.optLong("start")}:${entry.optLong("end")}"
+            if (seen.add(key)) {
+                merged.add(entry)
+                imported++
+            }
+        }
+        merged.sortByDescending { it.optLong("start") }
+        val compact = JSONArray()
+        merged.take(30).forEach { compact.put(it) }
+        check(prefs.edit().putString("history", compact.toString()).commit()) {
+            "Čuvanje rezervne kopije nije uspelo."
+        }
+        if (preferences != null) {
+            val settings = Settings(appContext)
+            if (sensitivityName != null) settings.sensitivity = Sensitivity.fromStored(sensitivityName)
+            if (modeName != null) settings.alertMode = AlertMode.fromStored(modeName)
+            if (preferences.has("phoneVibration")) {
+                settings.phoneVibration = preferences.optBoolean("phoneVibration")
+            }
+        }
+        imported
+    }
+
+    fun exportCsv(): String = synchronized(lock) {
+        val columns = listOf(
+            "start_local", "end_local", "detector_version", "sensitivity",
+            "recognized_events", "alarm_series", "posted_notifications",
+            "estimated_snoring_seconds", "stop_reason"
+        ) + NightHours.labels().map { "hour_${it}_events" }
+        val text = StringBuilder().append(CsvCell.row(columns)).append("\r\n")
+        val format = SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ssXXX", Locale.ROOT)
+        val records = history()
+        for (i in 0 until records.length()) {
+            val item = records.optJSONObject(i) ?: continue
+            val start = item.optLong("start")
+            val end = item.optLong("end")
+            val hist = item.optJSONObject("hourly")
+            val seconds = item.optLong("snoreFrames") * item.optLong("hopMs", 975) / 1000
+            val values = listOf(
+                format.format(Date(start)),
+                if (end > 0) format.format(Date(end)) else "",
+                item.optString("detectorVersion"),
+                item.optString("sensitivity"),
+                item.optInt("episodes").toString(),
+                item.optInt("alerts").toString(),
+                item.optInt("notifications").toString(),
+                seconds.toString(),
+                item.optString("stopReason")
+            ) + NightHours.labels().map { hour ->
+                if (hist == null) "" else hist.optInt(hour, 0).toString()
+            }
+            text.append(CsvCell.row(values)).append("\r\n")
+        }
+        text.toString()
+    }
 
     private fun activeOrNull(): JSONObject? = try {
         prefs.getString("active", null)?.let { JSONObject(it) }

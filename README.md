@@ -1,6 +1,16 @@
 # SnoreGuard — Android + Huawei Watch GT 2
 
-**Current version: 0.4.0 (build 40).** Android 8+; Kotlin; local offline YAMNet.
+**Current version: 0.5.0 (build 50).** Android 8+; Kotlin; local offline YAMNet.
+
+## New in v0.5.0
+
+- Hour-by-hour recognition chart (22:00 to 07:59) for **new** sessions. Every distinct event is counted once, not every overlapping 250 ms YAMNet frame. No audio is stored.
+- Completed-night comparison chart for up to seven recent nights using the consistent `breaths_v1` event definition. Differences in sensitivity and session duration still make raw counts imperfect comparisons.
+- Local CSV export via Android's Storage Access Framework. Estimated snoring seconds are model-window approximations, NOT measured physiological duration. Older sessions have blank hourly columns; no timestamps are invented.
+- JSON backup and restore of up to 30 completed sessions plus saved sensitivity/alert/phone-vibration settings via Android's file picker. Restore validates format before merging, preserves local duplicates and sorts newest first.
+- The active, unfinished session is intentionally excluded from exported backups; stop monitoring first for a complete backup.
+- No INTERNET permission, server, cloud account or automatic data upload. Keep exported JSON private and secure.
+- APK is still built with the GitHub Actions debug signature, which may change from run to run. Back up old history **before** uninstalling an incompatible old debug build.
 
 ## New in v0.4.0
 

@@ -185,11 +185,16 @@ class MonitorService : Service() {
 
                 // Detector uses AUDIO sample time, preventing slow inference
                 // from turning one long positive breath into two separate ones.
+                val beforeEvents = engine.episodes
                 val alert = engine.process(
                     isSnore = snore,
                     mayAlert = NightWindow.isNight(LocalTime.now()),
                     elapsedMillis = audioStartElapsed + sampleTimeMs
                 )
+                if (engine.episodes > beforeEvents) {
+                    // Distinct-event timestamp, never the overlapping window count.
+                    store.recordSnoreAt(System.currentTimeMillis())
+                }
                 if (alert) {
                     store.update(engine, lastScore, modelActive = true)
                     mainHandler.post { if (recording) alertBurst.start() }

@@ -2,6 +2,7 @@ package rs.snoreguard.mvp
 
 import android.Manifest
 import android.app.Activity
+import android.app.AlertDialog
 import android.app.NotificationManager
 import android.net.Uri
 import android.os.PowerManager
@@ -19,6 +20,7 @@ import android.widget.Button
 import android.widget.Switch
 import android.widget.TextView
 import android.widget.Toast
+import android.text.format.DateFormat
 import org.json.JSONObject
 import java.text.SimpleDateFormat
 import java.time.LocalTime
@@ -46,6 +48,11 @@ class MainActivity : Activity() {
     private lateinit var alertStats: TextView
     private lateinit var history: TextView
     private lateinit var errors: TextView
+    private lateinit var hourlyChart: SnoreBarChartView
+    private lateinit var comparisonChart: SnoreBarChartView
+    private lateinit var hourlyDetails: TextView
+    private lateinit var comparisonDetails: TextView
+    private lateinit var exportStatus: TextView
     private val handler = Handler(Looper.getMainLooper())
     private var pendingAction: String? = null
     private val dateFormat = SimpleDateFormat("dd.MM. HH:mm", Locale.forLanguageTag("sr-RS"))
@@ -88,6 +95,28 @@ class MainActivity : Activity() {
         alertStats = findViewById(R.id.alertStats)
         history = findViewById(R.id.historyText)
         errors = findViewById(R.id.errorText)
+        hourlyChart = findViewById(R.id.hourlyChart)
+        comparisonChart = findViewById(R.id.comparisonChart)
+        hourlyDetails = findViewById(R.id.hourlyDetails)
+        comparisonDetails = findViewById(R.id.comparisonDetails)
+        exportStatus = findViewById(R.id.exportStatus)
+        findViewById<Button>(R.id.exportCsvButton).setOnClickListener {
+            createDocument("text/csv", "SnoreGuard-statistika.csv", REQUEST_EXPORT_CSV)
+        }
+        findViewById<Button>(R.id.backupButton).setOnClickListener {
+            createDocument("application/json", "SnoreGuard-backup.json", REQUEST_BACKUP)
+        }
+        findViewById<Button>(R.id.restoreButton).setOnClickListener {
+            if (MonitorService.isActive) {
+                toast("Zaustavi praćenje pre vraćanja rezervne kopije.")
+            } else {
+                val intent = Intent(Intent.ACTION_OPEN_DOCUMENT).apply {
+                    addCategory(Intent.CATEGORY_OPENABLE)
+                    type = "application/json"
+                }
+                startActivityForResult(intent, REQUEST_RESTORE)
+            }
+        }
         readinessStatus = findViewById(R.id.readinessStatus)
         diagnostics = findViewById(R.id.diagnosticsText)
         setupProfileControls()
@@ -227,6 +256,7 @@ class MainActivity : Activity() {
         showStats(latest, active != null)
         showDiagnostics(latest, active != null)
         showHistory()
+        showCharts(latest)
         errors.text = store.error()
     }
 
@@ -264,6 +294,121 @@ class MainActivity : Activity() {
             "Završetak: ${item.optString("stopReason", "Nepoznato")}"
         }
         diagnostics.text = "Obrađeno prozora: $frames • prag: ${"%.2f".format(Locale.US, threshold)}\n$freshness"
+    }
+
+    private fun showCharts(latest: JSONObject?) {
+        val hourly = latest?.optJSONObject("hourly")
+        val labels = NightHours.labels()
+        hourlyChart.showSeries(labels, labels.map { hourly?.optInt(it, 0) ?: 0 }, hourly != null)
+        hourlyDetails.text = if (hourly == null) {
+            "Satna statistika postoji tek za sesije snimljene verzijom v0.5.0 i novijom."
+        } else {
+            "Prepoznata pojedinačna hrkanja po satu: ${labels.sumOf { hourly.optInt(it, 0) }}. " +
+                "Grafikon nije medicinsko merenje."
+        }
+
+        val recent = mutableListOf<JSONObject>()
+        val history = store.history()
+        for (i in 0 until history.length()) {
+            val item = history.optJSONObject(i) ?: continue
+            // Legacy versions used a different event definition: never compare them.
+            if (item.optString("detectorVersion") != "breaths_v1") continue
+            recent.add(item)
+            if (recent.size == 7) break
+        }
+        val sorted = recent.reversed()
+        val smallDate = SimpleDateFormat("dd.MM", Locale.forLanguageTag("sr-RS"))
+        comparisonChart.showSeries(
+            sorted.map { smallDate.format(Date(it.optLong("start"))) },
+            sorted.map { it.optInt("episodes") },
+            sorted.isNotEmpty()
+        )
+        comparisonDetails.text = if (recent.isEmpty()) {
+            "Još nema uporedivih završenih noći. Praćenje je potrebno završiti da bi se pojavilo ovde."
+        } else {
+            val delta = if (recent.size >= 2) {
+                val diff = recent[0].optInt("episodes") - recent[1].optInt("episodes")
+                "Poslednja noć: ${recent[0].optInt("episodes")} prepoznatih hrkanja; " +
+                    "razlika prema prethodnoj: ${if (diff > 0) "+" else ""}$diff."
+            } else "Sačuvana je jedna noć. Poređenje će se pojaviti posle druge."
+            "$delta Promena osetljivosti i dužine praćenja utiče na rezultat."
+        }
+    }
+
+    private fun createDocument(mime: String, title: String, requestCode: Int) {
+        val intent = Intent(Intent.ACTION_CREATE_DOCUMENT).apply {
+            addCategory(Intent.CATEGORY_OPENABLE)
+            type = mime
+            putExtra(Intent.EXTRA_TITLE, title)
+        }
+        startActivityForResult(intent, requestCode)
+    }
+
+    @Deprecated("Uses platform SAF callbacks to support Android 8 without AndroidX")
+    override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
+        super.onActivityResult(requestCode, resultCode, data)
+        if (resultCode != RESULT_OK) return
+        val uri = data?.data ?: return
+        try {
+            when (requestCode) {
+                REQUEST_EXPORT_CSV, REQUEST_BACKUP -> {
+                    val content = if (requestCode == REQUEST_EXPORT_CSV) {
+                        store.exportCsv()
+                    } else {
+                        store.exportBackup()
+                    }
+                    val target = contentResolver.openOutputStream(uri, "w")
+                        ?: throw IllegalStateException("Ne mogu da otvorim odredište.")
+                    target.bufferedWriter(Charsets.UTF_8).use { it.write(content) }
+                    exportStatus.text = if (requestCode == REQUEST_EXPORT_CSV) {
+                        "✓ CSV statistika je sačuvana u izabranom folderu."
+                    } else {
+                        "✓ Rezervna kopija je sačuvana. Čuvaj je na bezbednom mestu."
+                    }
+                }
+                REQUEST_RESTORE -> {
+                    if (MonitorService.isActive) {
+                        toast("Zaustavi praćenje pre vraćanja podataka.")
+                        return
+                    }
+                    val source = contentResolver.openInputStream(uri)
+                        ?: throw IllegalStateException("Ne mogu da pročitam fajl.")
+                    val content = source.bufferedReader(Charsets.UTF_8).use { reader ->
+                        val limited = CharArray(500_001)
+                        var filled = 0
+                        while (filled < limited.size) {
+                            val count = reader.read(limited, filled, limited.size - filled)
+                            if (count < 0) break
+                            filled += count
+                        }
+                        require(filled <= 500_000) { "Prevelika rezervna kopija." }
+                        String(limited, 0, filled)
+                    }
+                    AlertDialog.Builder(this)
+                        .setTitle("Vrati rezervnu kopiju?")
+                        .setMessage("Dodaće se nedostajuće završene sesije (najviše 30). " +
+                            "Postojeće sesije se neće brisati namerno, ali starije mogu ispasti " +
+                            "zbog ograničenja na 30. Vratiće se i podešavanja.")
+                        .setNegativeButton("Otkaži", null)
+                        .setPositiveButton("Vrati") { _, _ ->
+                            try {
+                                val imported = store.importBackup(content)
+                                exportStatus.text = "✓ Uvezeno $imported novih sesija."
+                                settings = Settings(this)
+                                setupProfileControls()
+                                findViewById<Switch>(R.id.phoneVibrationSwitch).isChecked =
+                                    settings.phoneVibration
+                                refresh()
+                            } catch (error: Exception) {
+                                exportStatus.text = "✗ Uvoz nije uspeo: ${error.message}"
+                            }
+                        }
+                        .show()
+                }
+            }
+        } catch (error: Exception) {
+            exportStatus.text = "✗ Operacija nije uspela: ${error.message}"
+        }
     }
 
     private fun showHistory() {
@@ -391,5 +536,10 @@ class MainActivity : Activity() {
 
     private fun toast(text: String) = Toast.makeText(this, text, Toast.LENGTH_LONG).show()
 
-    companion object { private const val REQUEST_PERMISSIONS = 1001 }
+    companion object {
+        private const val REQUEST_PERMISSIONS = 1001
+        private const val REQUEST_EXPORT_CSV = 5001
+        private const val REQUEST_BACKUP = 5002
+        private const val REQUEST_RESTORE = 5003
+    }
 }
