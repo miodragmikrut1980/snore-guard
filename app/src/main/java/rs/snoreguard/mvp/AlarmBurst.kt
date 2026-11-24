@@ -14,9 +14,9 @@ fun interface BurstScheduler {
 class AlarmBurst(
     private val scheduler: BurstScheduler,
     private val canContinue: () -> Boolean,
-    private val emit: (step: Int) -> Unit,
     private val totalAlerts: Int = TOTAL_ALERTS,
-    private val intervalMillis: Long = INTERVAL_MILLIS
+    private val intervalMillis: Long = INTERVAL_MILLIS,
+    private val emit: (step: Int) -> Unit
 ) {
     init {
         require(totalAlerts in 1..3) { "Supported alert series: 1-3 notifications" }
