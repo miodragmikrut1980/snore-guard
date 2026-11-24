@@ -1,5 +1,13 @@
 # Changelog
 
+## v0.9.0 — Night-friendly navigation and history
+- Four fixed tabs: monitoring, statistics, recordings, settings; live status remains visible.
+- Last completed session summary, calendar selection (start date), multiple sessions on the same date, seven/30-day weighted trends.
+- Hourly event and posted-notification timeline for new sessions only, including CSV and JSON/ZIP data.
+- Local WAV waveform, playback/pause/seek, cleanup on leaving screen, no playback during recording.
+- Retain the existing dark theme, all backup controls, settings, detection and alert behavior.
+- Tests for weighted trends and bounded PCM peaks; no claim of Android-device visual validation or exact historical alarm timestamps.
+
 ## v0.8.1 — Observed alarm response and optional smart follow-ups
 - Track 60 seconds after the first posted Android notification: 10 seconds of detected quiet within 30 seconds, recurrence, continuing detection, or inconclusive.
 - Reject observation gaps above 2 seconds, stale buffered audio and interrupted/overlapping windows; test sessions do not enter history.

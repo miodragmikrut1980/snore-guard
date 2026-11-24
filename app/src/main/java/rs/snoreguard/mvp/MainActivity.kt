@@ -70,7 +70,11 @@ class MainActivity : Activity() {
     private lateinit var snoreTestButton: Button
     private lateinit var snoreTestStatus: TextView
     private var testStopRequested = false
-    private var player: MediaPlayer? = null
+    private var clipPlayer: ClipPlayer? = null
+    private var currentTab = 0
+    private var selectedNightStart: Long? = null
+    private var selectedNightEnd: Long? = null
+    private var lastHistorySignature = ""
     private var lastClipSignature = ""
     private val handler = Handler(Looper.getMainLooper())
     private var pendingAction: String? = null
@@ -85,6 +89,17 @@ class MainActivity : Activity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_main)
+        currentTab = savedInstanceState?.getInt("tab", 0)?.coerceIn(0, 3) ?: 0
+        selectedNightStart = savedInstanceState?.getLong("selectedStart", 0)?.takeIf { it > 0 }
+        selectedNightEnd = savedInstanceState?.getLong("selectedEnd", 0)?.takeIf { it > 0 }
+        val root = findViewById<android.view.View>(R.id.appRoot)
+        root.setOnApplyWindowInsetsListener { v, insets ->
+            @Suppress("DEPRECATION")
+            v.setPadding(insets.systemWindowInsetLeft, insets.systemWindowInsetTop,
+                insets.systemWindowInsetRight, insets.systemWindowInsetBottom)
+            insets
+        }
+        root.requestApplyInsets()
         // Show the version installed on THIS phone, never a manually hard-coded label.
         val installedPackage = packageManager.getPackageInfo(packageName, 0)
         val installedVersion = installedPackage.versionName ?: "?"
@@ -275,7 +290,121 @@ class MainActivity : Activity() {
         }
         test.setOnClickListener { requirePermissionsThen("test") }
         testBurst.setOnClickListener { requirePermissionsThen("test_burst") }
+        listOf(R.id.tabMonitor, R.id.tabStats, R.id.tabClips, R.id.tabSettings).forEachIndexed { i, id ->
+            findViewById<Button>(id).setOnClickListener { selectTab(i) }
+        }
+        findViewById<Button>(R.id.openMorningStats).setOnClickListener {
+            selectedNightStart = null; selectedNightEnd = null; selectTab(1)
+        }
+        findViewById<Button>(R.id.latestNightButton).setOnClickListener {
+            selectedNightStart = null; selectedNightEnd = null; refresh()
+        }
+        findViewById<Button>(R.id.pickNightButton).setOnClickListener { pickNight() }
+        selectTab(currentTab)
+    }
+
+    override fun onSaveInstanceState(outState: Bundle) {
+        outState.putInt("tab", currentTab)
+        selectedNightStart?.let { outState.putLong("selectedStart", it) }
+        selectedNightEnd?.let { outState.putLong("selectedEnd", it) }
+        super.onSaveInstanceState(outState)
+    }
+
+    private fun selectTab(index: Int) {
+        if (index != 2) stopPlayback()
+        currentTab = index
+        val pages = listOf(R.id.pageMonitor, R.id.pageStats, R.id.pageClips, R.id.pageSettings)
+        val tabs = listOf(R.id.tabMonitor, R.id.tabStats, R.id.tabClips, R.id.tabSettings)
+        pages.forEachIndexed { i, id -> findViewById<android.view.View>(id).visibility =
+            if (i == index) android.view.View.VISIBLE else android.view.View.GONE }
+        tabs.forEachIndexed { i, id ->
+            findViewById<Button>(id).apply {
+                isSelected = i == index
+                setBackgroundResource(if (i == index) R.drawable.bg_primary else R.drawable.bg_secondary)
+                setTextColor(getColor(if (i == index) R.color.button_text else R.color.text_primary))
+                contentDescription = text.toString() + if (i == index) ", izabrano" else ""
+            }
+        }
+        findViewById<android.widget.ScrollView>(R.id.pageScroll).scrollTo(0, 0)
         refresh()
+    }
+
+    private fun records(): List<JSONObject> {
+        val history = store.history()
+        return (0 until history.length()).mapNotNull { history.optJSONObject(it) }
+    }
+
+    private fun pickNight() {
+        val rows = records()
+        if (rows.isEmpty()) { toast("Nema sačuvanih sesija."); return }
+        val zone = java.time.ZoneId.systemDefault()
+        fun day(item: JSONObject) = java.time.Instant.ofEpochMilli(item.optLong("start")).atZone(zone).toLocalDate()
+        val chosen = rows.firstOrNull { it.optLong("start") == selectedNightStart && it.optLong("end") == selectedNightEnd } ?: rows.first()
+        val initial = day(chosen)
+        val dialog = android.app.DatePickerDialog(this, { _, year, month, dayOfMonth ->
+            val date = java.time.LocalDate.of(year, month + 1, dayOfMonth)
+            val matches = rows.filter { day(it) == date }
+            if (matches.isEmpty()) toast("Nema sesije započete tog datuma.")
+            else {
+                fun choose(item: JSONObject) {
+                    selectedNightStart = item.optLong("start"); selectedNightEnd = item.optLong("end"); refresh()
+                }
+                if (matches.size == 1) choose(matches.first())
+                else AlertDialog.Builder(this).setTitle("Izaberi sesiju")
+                    .setItems(matches.map { dateFormat.format(Date(it.optLong("start"))) + " • " + it.optInt("episodes") + " događaja" }.toTypedArray()) { _, which -> choose(matches[which]) }.show()
+            }
+        }, initial.year, initial.monthValue - 1, initial.dayOfMonth)
+        dialog.datePicker.minDate = rows.minOf { day(it) }.atStartOfDay(zone).toInstant().toEpochMilli()
+        dialog.datePicker.maxDate = rows.maxOf { day(it) }.plusDays(1).atStartOfDay(zone).toInstant().toEpochMilli() - 1
+        dialog.show()
+    }
+
+    private fun sessionSummary(item: JSONObject?): String {
+        if (item == null) return "Još nema završene sesije."
+        val start = item.optLong("start")
+        val end = item.optLong("end")
+        val result = NightReport.metrics(item)
+        return dateFormat.format(Date(start)) + " – " + dateFormat.format(Date(end)) +
+            "\nPraćenje: " + NightReport.decimal((end - start).coerceAtLeast(0) / 3600000.0) + " h" +
+            "\nDetektovani događaji: " + item.optInt("episodes") +
+            "\nIndeks hrkanja: " + (result?.score?.toString()?.plus(" / 100") ?: "nema dovoljno podataka") +
+            "\nSerije alarma: " + item.optInt("alerts") + " • obaveštenja: " +
+            if (item.has("notifications")) item.optInt("notifications").toString() else "nepoznato"
+    }
+
+    private fun showArchive(rows: List<JSONObject>, item: JSONObject?) {
+        findViewById<TextView>(R.id.morningSummary).text = "POSLEDNJA ZAVRŠENA SESIJA\n\n" + sessionSummary(rows.firstOrNull())
+        findViewById<Button>(R.id.openMorningStats).isEnabled = rows.isNotEmpty()
+        findViewById<TextView>(R.id.selectedNightSummary).text = sessionSummary(item)
+        val alarms = item?.optJSONObject("hourlyNotifications")
+        val hourly = item?.optJSONObject("hourly")
+        findViewById<TextView>(R.id.alertTimeline).text = if (alarms == null || hourly == null)
+            "Vremenska linija alarma: dostupna za sesije od v0.9.0. Satno hrkanje ostaje u grafikonu."
+        else {
+            val hours = NightHours.labelsForWindow(item.optInt("windowStart",1320).coerceIn(0,1439),
+                item.optInt("windowEnd",480).coerceIn(0,1439))
+            "VREMENSKA LINIJA PO SATIMA\nHrkanja / poslata obaveštenja\n" +
+                hours.joinToString("\n") { hour -> "$hour:00   ${hourly.optInt(hour)}  /  ${alarms.optInt(hour)}" }
+        }
+        val signature = rows.joinToString("|") { "${it.optLong("start")}:${it.optLong("end")}:${it.optInt("episodes")}:${it.optInt("analysedFrames")}:${it.optString("sensitivity")}" } +
+            "|" + (item?.optString("sensitivity") ?: "") + "|" + java.time.LocalDate.now()
+        if (signature == lastHistorySignature) return
+        lastHistorySignature = signature
+        val sensitivity = item?.optString("sensitivity").orEmpty()
+        val nights = rows.mapNotNull { row ->
+            val r = NightReport.metrics(row) ?: return@mapNotNull null
+            HistoryTrends.Night(row.optLong("start"), row.optString("sensitivity"), row.optInt("episodes"), r.analysedHours, r.coverage)
+        }
+        val zone = java.time.ZoneId.systemDefault()
+        val today = java.time.LocalDate.now(zone)
+        fun trend(days: Long): String {
+            val from = today.minusDays(days - 1).atStartOfDay(zone).toInstant().toEpochMilli()
+            val summary = HistoryTrends.summarize(nights, from, System.currentTimeMillis(), sensitivity)
+            return "$days dana: " + (summary.eventsPerHour?.let { NightReport.decimal(it) + " događaja/h" } ?: "nema podataka") +
+                " • ${summary.sessions} sesija • " + NightReport.decimal(summary.hours) + " h analize"
+        }
+        findViewById<TextView>(R.id.trendSummary).text = trend(7) + "\n\n" + trend(30) +
+            "\n\nIsta osetljivost kao izabrana sesija; minimum 30 min i 80% pokrivenosti. Dani bez merenja nisu nula."
     }
 
     private fun requirePermissionsThen(action: String) {
@@ -399,21 +528,28 @@ class MainActivity : Activity() {
         } else "Ručno pokreni praćenje tokom izabranog intervala. Test može bilo kada."
 
         val active = store.active()
-        val latest = active ?: store.history().optJSONObject(0)
+        val rows = records()
+        val latest = active ?: rows.firstOrNull()
+        val selected = rows.firstOrNull { it.optLong("start") == selectedNightStart && it.optLong("end") == selectedNightEnd }
+            ?: rows.firstOrNull()
+        findViewById<TextView>(R.id.globalStatus).text = status.text
         if (active != null) {
             confidence.text = if (active.optBoolean("modelActive")) {
                 "YAMNet lokalno • Snoring skor: ${"%.2f".format(Locale.US, active.optDouble("lastScore"))} (prag ${"%.2f".format(Locale.US, active.optDouble("threshold", 0.07))})"
             } else "AI model se učitava…"
         } else {
-            confidence.text = "YAMNet • zvuk se ne čuva, obrada samo na telefonu"
+            confidence.text = "YAMNet • lokalna obrada; WAV snimci samo ako je opcija uključena"
         }
         showStats(latest, active != null)
         showDiagnostics(latest, active != null)
         showHistory()
-        showCharts(latest)
-        showAdvancedAnalytics(latest, active != null)
-        showAlertResponse(latest)
-        showSavedClips()
+        showArchive(rows, selected)
+        if (currentTab == 1) {
+            showCharts(selected)
+            showAdvancedAnalytics(selected, false)
+            showAlertResponse(selected)
+        }
+        if (currentTab == 2) showSavedClips()
         errors.text = store.error()
     }
 
@@ -480,6 +616,7 @@ class MainActivity : Activity() {
             if (item.optString("detectorVersion") != "breaths_v1") continue
             val metric = NightReport.metrics(item) ?: continue
             if (metric.score == null) continue
+            if (latest != null && item.optString("sensitivity") != latest.optString("sensitivity")) continue
             if (recent.isNotEmpty() && item.optString("sensitivity") != recent.first().optString("sensitivity")) continue
             recent.add(item)
             if (recent.size == 7) break
@@ -489,7 +626,7 @@ class MainActivity : Activity() {
         comparisonChart.showSeries(
             sorted.map { smallDate.format(Date(it.optLong("start"))) },
             sorted.map { kotlin.math.round(NightReport.metrics(it)!!.eventsPerHour).toInt() },
-            sorted.isNotEmpty()
+            sorted.isNotEmpty(), unit = "događaja po analiziranom satu"
         )
         comparisonDetails.text = if (recent.isEmpty()) {
             "Još nema uporedivih završenih noći. Praćenje je potrebno završiti da bi se pojavilo ovde."
@@ -760,9 +897,9 @@ class MainActivity : Activity() {
     }
 
     private fun stopPlayback() {
-        val old = player
-        player = null
-        if (old != null) try { old.release() } catch (_: Exception) {}
+        val old = clipPlayer
+        clipPlayer = null
+        old?.close()
     }
 
     private fun showSavedClips() {
@@ -842,8 +979,7 @@ class MainActivity : Activity() {
     private fun chooseClipAction(clip: SnoreClip) {
         AlertDialog.Builder(this)
             .setTitle("Zvučni snimak • " + clip.label.display)
-            .setMessage("Trajanje: " + (clip.durationMs / 1000) +
-                " s. Zvuk može sadržati govor i druge privatne informacije.")
+
             .setItems(arrayOf("Preslušaj", "Označi: hrkanje / lažni alarm",
                 "Dodaj ili izmeni belešku", "Podeli WAV sa lekarom", "Obriši")) { _, which ->
                 val file = clipStore.fileFor(clip.filename)
@@ -852,15 +988,11 @@ class MainActivity : Activity() {
                     return@setItems
                 }
                 when (which) {
-                    0 -> try {
+                    0 -> if (MonitorService.isActive) {
+                        toast("Zaustavi praćenje pre preslušavanja da zvuk ne utiče na detekciju.")
+                    } else try {
                         stopPlayback()
-                        val current = MediaPlayer()
-                        current.setDataSource(file.absolutePath)
-                        current.prepare()
-                        current.setOnCompletionListener { stopPlayback() }
-                        player = current
-                        current.start()
-                        toast("Reprodukcija snimka je pokrenuta.")
+                        clipPlayer = ClipPlayer(this, file)
                     } catch (error: Exception) {
                         stopPlayback()
                         toast("Ne može da se pusti snimak: " + error.message)

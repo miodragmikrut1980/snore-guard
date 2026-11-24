@@ -1,11 +1,9 @@
 <?xml version="1.0" encoding="utf-8"?>
-<ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android" android:id="@+id/appRoot"
     android:layout_width="match_parent" android:layout_height="match_parent"
-    android:fillViewport="true" android:background="@color/background">
+    android:orientation="vertical" android:background="@color/background">
     <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content"
-        android:orientation="vertical" android:paddingStart="22dp" android:paddingEnd="22dp"
-        android:paddingTop="32dp" android:paddingBottom="42dp">
-
+        android:orientation="vertical" android:paddingHorizontal="18dp" android:paddingTop="12dp" android:paddingBottom="8dp">
         <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content"
             android:orientation="horizontal" android:gravity="center_vertical">
             <ImageView android:layout_width="38dp" android:layout_height="38dp"
@@ -19,13 +17,19 @@
                 android:text="v…" android:textColor="@color/text_secondary"
                 android:textSize="12sp" android:fontFamily="sans-serif-medium" />
         </LinearLayout>
+        <TextView android:id="@+id/globalStatus" android:layout_width="match_parent" android:layout_height="wrap_content"
+            android:layout_marginTop="5dp" android:textColor="@color/primary" android:textSize="12sp" />
+        <TextView android:id="@+id/errorText" android:layout_width="match_parent" android:layout_height="wrap_content"
+            android:layout_marginTop="16dp" android:text="" android:textColor="@color/warning" android:textSize="13sp" />
+    </LinearLayout>
+    <ScrollView android:id="@+id/pageScroll" android:layout_width="match_parent" android:layout_height="0dp"
+        android:layout_weight="1" android:fillViewport="true">
+        <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content" android:orientation="vertical">
+    <LinearLayout android:id="@+id/pageMonitor" android:layout_width="match_parent" android:layout_height="wrap_content"
+        android:orientation="vertical" android:paddingHorizontal="18dp" android:paddingBottom="24dp" android:visibility="visible">
         <TextView android:layout_width="match_parent" android:layout_height="wrap_content"
-            android:text="Mirnija noć.\nPametniji alarm." android:layout_marginTop="8dp"
-            android:textColor="@color/text_primary" android:textSize="30sp" android:textStyle="bold" />
-        <TextView android:layout_width="match_parent" android:layout_height="wrap_content"
-            android:text="Telefon prepoznaje hrkanje, GT 2 prima obaveštenje. Bez snimanja i slanja zvuka."
-            android:layout_marginTop="10dp" android:textColor="@color/text_secondary" android:textSize="14sp" />
-
+            android:layout_marginTop="16dp" android:text="Praćenje" android:textStyle="bold"
+            android:textColor="@color/text_primary" android:textSize="23sp" />
         <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content"
             android:layout_marginTop="24dp" android:background="@drawable/bg_card" android:padding="20dp"
             android:orientation="vertical">
@@ -43,7 +47,206 @@
                 android:textColor="@color/button_text" android:textStyle="bold"
                 android:background="@drawable/bg_primary" />
         </LinearLayout>
+        <TextView android:id="@+id/morningSummary" android:layout_width="match_parent" android:layout_height="wrap_content"
+            android:layout_marginTop="10dp" android:background="@drawable/bg_card" android:padding="16dp"
+            android:text="Jutarnji izveštaj nakon prve završene sesije." android:textColor="@color/text_primary" android:textSize="14sp" />
+        <Button android:id="@+id/openMorningStats" android:layout_width="match_parent" android:layout_height="48dp"
+            android:layout_marginTop="8dp" android:text="Otvori statistiku poslednje noći" android:textAllCaps="false"
+            android:background="@drawable/bg_secondary" android:textColor="@color/text_primary" />
+        <Button android:id="@+id/testButton" android:layout_width="match_parent" android:layout_height="52dp"
+            android:layout_marginTop="14dp" android:text="Test obaveštenja → Huawei GT 2"
+            android:textAllCaps="false" android:textStyle="bold" android:textColor="@color/text_primary"
+            android:background="@drawable/bg_secondary" />
 
+        <Button android:id="@+id/testBurstButton" android:layout_width="match_parent" android:layout_height="52dp"
+            android:layout_marginTop="8dp" android:text="Test jačeg alarma ×3 (32 sekunde)"
+            android:textAllCaps="false" android:textStyle="bold" android:textColor="@color/text_primary"
+            android:background="@drawable/bg_secondary" />
+        <TextView android:id="@+id/testBurstStatus" android:layout_width="match_parent"
+            android:layout_height="wrap_content" android:layout_marginTop="7dp"
+            android:text="Test ×3 (0/16/32 s) radi i tokom dana. Ostavi aplikaciju otvorenu."
+            android:textColor="@color/text_secondary" android:textSize="12sp" />
+        <Button android:id="@+id/snoreTestButton" android:layout_width="match_parent"
+            android:layout_height="54dp" android:layout_marginTop="14dp"
+            android:text="Testiraj prepoznavanje hrkanja (90 s)"
+            android:textAllCaps="false" android:textStyle="bold"
+            android:textColor="@color/button_text" android:background="@drawable/bg_primary" />
+        <TextView android:id="@+id/snoreTestStatus" android:layout_width="match_parent"
+            android:layout_height="wrap_content" android:layout_marginTop="8dp"
+            android:text="Test mikrofona i AI hrkanja radi u bilo koje doba dana. Ne čuva snimke ni noćnu istoriju."
+            android:textSize="12sp" android:textColor="@color/text_secondary" />
+        <TextView android:layout_width="match_parent" android:layout_height="wrap_content"
+            android:layout_marginTop="26dp" android:text="OVO PRAĆENJE" android:letterSpacing="0.10"
+            android:fontFamily="sans-serif-medium" android:textSize="12sp" android:textColor="@color/text_secondary" />
+        <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content"
+            android:layout_marginTop="9dp" android:background="@drawable/bg_card" android:padding="18dp"
+            android:orientation="vertical">
+            <TextView android:id="@+id/sessionTime" android:layout_width="match_parent" android:layout_height="wrap_content"
+                android:text="Nema aktivnog praćenja" android:textColor="@color/text_secondary" android:textSize="13sp" />
+            <TextView android:id="@+id/episodeStats" android:layout_width="match_parent" android:layout_height="wrap_content"
+                android:text="Epizode hrkanja: 0" android:layout_marginTop="10dp"
+                android:textColor="@color/text_primary" android:textSize="16sp" />
+            <TextView android:id="@+id/snoreStats" android:layout_width="match_parent" android:layout_height="wrap_content"
+                android:text="Procenjeno hrkanje: 0 min" android:layout_marginTop="8dp"
+                android:textColor="@color/text_primary" android:textSize="16sp" />
+            <TextView android:id="@+id/alertStats" android:layout_width="match_parent" android:layout_height="wrap_content"
+                android:text="Serije alarma: 0 • Obaveštenja: 0" android:layout_marginTop="8dp"
+                android:textColor="@color/text_primary" android:textSize="16sp" />
+        </LinearLayout>
+        <TextView android:id="@+id/diagnosticsText" android:layout_width="match_parent"
+            android:layout_height="wrap_content" android:layout_marginTop="13dp"
+            android:text="Dijagnostika će biti prikazana tokom praćenja."
+            android:textColor="@color/text_secondary" android:textSize="12sp" />
+        <TextView android:layout_width="match_parent" android:layout_height="wrap_content"
+            android:layout_marginTop="24dp" android:text="PROVERA PRE SPAVANJA" android:letterSpacing="0.10"
+            android:fontFamily="sans-serif-medium" android:textSize="12sp" android:textColor="@color/text_secondary" />
+        <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content"
+            android:layout_marginTop="9dp" android:background="@drawable/bg_card" android:padding="18dp"
+            android:orientation="vertical">
+            <Button android:id="@+id/readinessButton" android:layout_width="match_parent"
+                android:layout_height="50dp" android:text="Proveri spremnost" android:textAllCaps="false"
+                android:textColor="@color/button_text" android:background="@drawable/bg_primary" />
+            <TextView android:id="@+id/readinessStatus" android:layout_width="match_parent"
+                android:layout_height="wrap_content" android:layout_marginTop="12dp"
+                android:text="Proveri dozvole i režim štednje baterije pre spavanja."
+                android:textSize="13sp" android:textColor="@color/text_secondary" />
+            <Button android:id="@+id/appSettingsButton" android:layout_width="match_parent"
+                android:layout_height="wrap_content" android:layout_marginTop="10dp"
+                android:text="Dozvole i obaveštenja" android:textAllCaps="false"
+                android:textColor="@color/text_primary" android:background="@drawable/bg_secondary" />
+            <Button android:id="@+id/batterySettingsButton" android:layout_width="match_parent"
+                android:layout_height="wrap_content" android:layout_marginTop="8dp"
+                android:text="Podešavanja baterije" android:textAllCaps="false"
+                android:textColor="@color/text_primary" android:background="@drawable/bg_secondary" />
+        </LinearLayout>
+        <TextView android:layout_width="match_parent" android:layout_height="wrap_content"
+            android:layout_marginTop="16dp" android:text="Nije medicinski uređaj niti test za apneju. Vibraciju sata treba proveriti tokom stvarnog sna."
+            android:textColor="@color/text_secondary" android:textSize="12sp" />
+    </LinearLayout>
+    <LinearLayout android:id="@+id/pageStats" android:layout_width="match_parent" android:layout_height="wrap_content"
+        android:orientation="vertical" android:paddingHorizontal="18dp" android:paddingBottom="24dp" android:visibility="gone">
+        <TextView android:layout_width="match_parent" android:layout_height="wrap_content"
+            android:layout_marginTop="16dp" android:text="Statistika i istorija" android:textStyle="bold"
+            android:textColor="@color/text_primary" android:textSize="23sp" />
+        <Button android:id="@+id/pickNightButton" android:layout_width="match_parent" android:layout_height="48dp"
+            android:layout_marginTop="8dp" android:text="Izaberi datum iz kalendara" android:textAllCaps="false"
+            android:background="@drawable/bg_secondary" android:textColor="@color/text_primary" />
+        <Button android:id="@+id/latestNightButton" android:layout_width="match_parent" android:layout_height="48dp"
+            android:layout_marginTop="8dp" android:text="Poslednja završena sesija" android:textAllCaps="false"
+            android:background="@drawable/bg_secondary" android:textColor="@color/text_primary" />
+        <TextView android:id="@+id/selectedNightSummary" android:layout_width="match_parent" android:layout_height="wrap_content"
+            android:layout_marginTop="10dp" android:background="@drawable/bg_card" android:padding="16dp"
+            android:text="Nema završene sesije." android:textColor="@color/text_primary" android:textSize="14sp" />
+        <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content"
+            android:layout_marginTop="12dp" android:background="@drawable/bg_card"
+            android:padding="18dp" android:orientation="vertical">
+            <TextView android:layout_width="match_parent" android:layout_height="wrap_content"
+                android:text="NAPREDNA NOĆNA ANALIZA" android:textStyle="bold"
+                android:textColor="@color/text_primary" android:textSize="16sp" />
+            <TextView android:id="@+id/advancedAnalytics" android:layout_width="match_parent"
+                android:layout_height="wrap_content" android:layout_marginTop="10dp"
+                android:textColor="@color/text_primary" android:textSize="14sp" />
+            <TextView android:layout_width="match_parent" android:layout_height="wrap_content"
+                android:layout_marginTop="16dp" android:text="REAKCIJA NAKON ALARMA"
+                android:textStyle="bold" android:textColor="@color/text_primary" android:textSize="15sp" />
+            <TextView android:id="@+id/alertResponseDetails" android:layout_width="match_parent"
+                android:layout_height="wrap_content" android:layout_marginTop="8dp"
+                android:textColor="@color/text_secondary" android:textSize="13sp" />
+            <Button android:id="@+id/doctorPdfButton" android:layout_width="match_parent"
+                android:layout_height="50dp" android:layout_marginTop="12dp"
+                android:text="Izveštaj za lekara (PDF)" android:textAllCaps="false"
+                android:textColor="@color/button_text" android:background="@drawable/bg_primary" />
+        </LinearLayout>
+        <TextView android:layout_width="match_parent" android:layout_height="wrap_content"
+            android:layout_marginTop="26dp" android:text="HRKANJE PO SATIMA" android:letterSpacing="0.10"
+            android:fontFamily="sans-serif-medium" android:textSize="12sp" android:textColor="@color/text_secondary" />
+        <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content"
+            android:layout_marginTop="9dp" android:background="@drawable/bg_card" android:padding="16dp"
+            android:orientation="vertical">
+            <TextView android:id="@+id/hourlyDetails" android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="Satna statistika dostupna nakon nove sesije."
+                android:textColor="@color/text_secondary" android:textSize="13sp" />
+            <rs.snoreguard.mvp.SnoreBarChartView android:id="@+id/hourlyChart"
+                android:layout_width="match_parent" android:layout_height="190dp"
+                android:layout_marginTop="10dp"
+                android:contentDescription="Grafikon hrkanja od 22 do 08 časova" />
+        </LinearLayout>
+
+        <TextView android:layout_width="match_parent" android:layout_height="wrap_content"
+            android:layout_marginTop="26dp" android:text="POREĐENJE PRETHODNIH NOĆI" android:letterSpacing="0.10"
+            android:fontFamily="sans-serif-medium" android:textSize="12sp" android:textColor="@color/text_secondary" />
+        <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content"
+            android:layout_marginTop="9dp" android:background="@drawable/bg_card" android:padding="16dp"
+            android:orientation="vertical">
+            <TextView android:id="@+id/comparisonDetails" android:layout_width="match_parent"
+                android:layout_height="wrap_content" android:text="Još nema dovoljno podataka za poređenje."
+                android:textColor="@color/text_secondary" android:textSize="13sp" />
+            <rs.snoreguard.mvp.SnoreBarChartView android:id="@+id/comparisonChart"
+                android:layout_width="match_parent" android:layout_height="190dp"
+                android:layout_marginTop="10dp"
+                android:contentDescription="Grafikon događaja po analiziranom satu za uporedive noći" />
+        </LinearLayout>
+        <TextView android:id="@+id/alertTimeline" android:layout_width="match_parent" android:layout_height="wrap_content"
+            android:layout_marginTop="10dp" android:background="@drawable/bg_card" android:padding="16dp"
+            android:text="Obaveštenja po satima: dostupno za nove sesije." android:textColor="@color/text_primary" android:textSize="14sp" />
+        <TextView android:layout_width="match_parent" android:layout_height="wrap_content"
+            android:layout_marginTop="16dp" android:text="Trendovi 7 / 30 dana" android:textStyle="bold"
+            android:textColor="@color/text_primary" android:textSize="23sp" />
+        <TextView android:id="@+id/trendSummary" android:layout_width="match_parent" android:layout_height="wrap_content"
+            android:layout_marginTop="10dp" android:background="@drawable/bg_card" android:padding="16dp"
+            android:text="Nema dovoljno podataka." android:textColor="@color/text_primary" android:textSize="14sp" />
+        <TextView android:layout_width="match_parent" android:layout_height="wrap_content"
+            android:layout_marginTop="26dp" android:text="PRETHODNE NOĆI" android:letterSpacing="0.10"
+            android:fontFamily="sans-serif-medium" android:textSize="12sp" android:textColor="@color/text_secondary" />
+        <TextView android:id="@+id/historyText" android:layout_width="match_parent" android:layout_height="wrap_content"
+            android:layout_marginTop="9dp" android:background="@drawable/bg_card" android:padding="18dp"
+            android:text="Još nema sačuvanih sesija." android:textColor="@color/text_secondary" android:textSize="14sp" />
+    </LinearLayout>
+    <LinearLayout android:id="@+id/pageClips" android:layout_width="match_parent" android:layout_height="wrap_content"
+        android:orientation="vertical" android:paddingHorizontal="18dp" android:paddingBottom="24dp" android:visibility="gone">
+        <TextView android:layout_width="match_parent" android:layout_height="wrap_content"
+            android:layout_marginTop="16dp" android:text="Audio biblioteka" android:textStyle="bold"
+            android:textColor="@color/text_primary" android:textSize="23sp" />
+
+        <TextView android:layout_width="match_parent" android:layout_height="wrap_content"
+            android:layout_marginTop="26dp" android:text="ZVUČNI SNIMCI ZA LEKARA"
+            android:letterSpacing="0.10" android:fontFamily="sans-serif-medium"
+            android:textSize="12sp" android:textColor="@color/text_secondary" />
+        <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content"
+            android:layout_marginTop="9dp" android:background="@drawable/bg_card"
+            android:padding="16dp" android:orientation="vertical">
+            <TextView android:id="@+id/clipCountText" android:layout_width="match_parent"
+                android:layout_height="wrap_content" android:text="Nema sačuvanih snimaka."
+                android:textSize="13sp" android:textColor="@color/text_secondary" />
+            <LinearLayout android:id="@+id/clipList" android:layout_width="match_parent"
+                android:layout_height="wrap_content" android:orientation="vertical"
+                android:layout_marginTop="8dp" />
+            <Button android:id="@+id/exportClipReviewsButton"
+                android:layout_width="match_parent" android:layout_height="50dp"
+                android:layout_marginTop="12dp"
+                android:text="Izvezi ocene i beleške (CSV)" android:textAllCaps="false"
+                android:textColor="@color/text_primary" android:background="@drawable/bg_secondary" />
+            <TextView android:id="@+id/clipReviewStatus"
+                android:layout_width="match_parent" android:layout_height="wrap_content"
+                android:layout_marginTop="7dp"
+                android:text="Ocene su tvoje oznake za proveru lažnih alarma. CSV ne sadrži zvuk."
+                android:textColor="@color/text_secondary" android:textSize="12sp" />
+            <Button android:id="@+id/deleteAllClipsButton" android:layout_width="match_parent"
+                android:layout_height="50dp" android:layout_marginTop="12dp"
+                android:text="Obriši sve zvučne snimke" android:textAllCaps="false"
+                android:textColor="@color/text_primary" android:background="@drawable/bg_secondary" />
+            <TextView android:layout_width="match_parent" android:layout_height="wrap_content"
+                android:layout_marginTop="8dp" android:textSize="12sp"
+                android:text="Dodirni snimak, preslušaj ga i označi kao hrkanje ili lažni alarm. Možeš dodati belešku za lekara ili podeliti WAV. Oznake ne menjaju automatski AI model. Snimanje ne dijagnostikuje apneju."
+                android:textColor="@color/text_secondary" />
+        </LinearLayout>
+    </LinearLayout>
+    <LinearLayout android:id="@+id/pageSettings" android:layout_width="match_parent" android:layout_height="wrap_content"
+        android:orientation="vertical" android:paddingHorizontal="18dp" android:paddingBottom="24dp" android:visibility="gone">
+        <TextView android:layout_width="match_parent" android:layout_height="wrap_content"
+            android:layout_marginTop="16dp" android:text="Podešavanja" android:textStyle="bold"
+            android:textColor="@color/text_primary" android:textSize="23sp" />
         <TextView android:layout_width="match_parent" android:layout_height="wrap_content"
             android:layout_marginTop="24dp" android:text="PODEŠAVANJA" android:letterSpacing="0.10"
             android:fontFamily="sans-serif-medium" android:textSize="12sp" android:textColor="@color/text_secondary" />
@@ -73,7 +276,7 @@
             <TextView android:layout_width="match_parent" android:layout_height="wrap_content"
                 android:layout_marginTop="7dp" android:text="Pauza između serija     60 sekundi" android:textColor="@color/text_secondary" android:textSize="14sp" />
             <TextView android:layout_width="match_parent" android:layout_height="wrap_content"
-                android:layout_marginTop="7dp" android:text="Alarmi samo noću     22:00–08:00" android:textColor="@color/text_secondary" android:textSize="14sp" />
+                android:layout_marginTop="7dp" android:text="Alarmi tokom podešenog intervala" android:textColor="@color/text_secondary" android:textSize="14sp" />
             <Switch android:id="@+id/smartFollowupsSwitch" android:layout_width="match_parent"
                 android:layout_height="wrap_content" android:layout_marginTop="12dp"
                 android:text="Smart upozorenja (eksperimentalno)" android:textColor="@color/text_primary"
@@ -122,95 +325,6 @@
                 android:textSize="12sp" android:textColor="@color/warning" />
         </LinearLayout>
         <TextView android:layout_width="match_parent" android:layout_height="wrap_content"
-            android:layout_marginTop="24dp" android:text="PROVERA PRE SPAVANJA" android:letterSpacing="0.10"
-            android:fontFamily="sans-serif-medium" android:textSize="12sp" android:textColor="@color/text_secondary" />
-        <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content"
-            android:layout_marginTop="9dp" android:background="@drawable/bg_card" android:padding="18dp"
-            android:orientation="vertical">
-            <Button android:id="@+id/readinessButton" android:layout_width="match_parent"
-                android:layout_height="50dp" android:text="Proveri spremnost" android:textAllCaps="false"
-                android:textColor="@color/button_text" android:background="@drawable/bg_primary" />
-            <TextView android:id="@+id/readinessStatus" android:layout_width="match_parent"
-                android:layout_height="wrap_content" android:layout_marginTop="12dp"
-                android:text="Proveri dozvole i režim štednje baterije pre spavanja."
-                android:textSize="13sp" android:textColor="@color/text_secondary" />
-            <Button android:id="@+id/appSettingsButton" android:layout_width="match_parent"
-                android:layout_height="wrap_content" android:layout_marginTop="10dp"
-                android:text="Dozvole i obaveštenja" android:textAllCaps="false"
-                android:textColor="@color/text_primary" android:background="@drawable/bg_secondary" />
-            <Button android:id="@+id/batterySettingsButton" android:layout_width="match_parent"
-                android:layout_height="wrap_content" android:layout_marginTop="8dp"
-                android:text="Podešavanja baterije" android:textAllCaps="false"
-                android:textColor="@color/text_primary" android:background="@drawable/bg_secondary" />
-        </LinearLayout>
-
-        <Button android:id="@+id/testButton" android:layout_width="match_parent" android:layout_height="52dp"
-            android:layout_marginTop="14dp" android:text="Test obaveštenja → Huawei GT 2"
-            android:textAllCaps="false" android:textStyle="bold" android:textColor="@color/text_primary"
-            android:background="@drawable/bg_secondary" />
-
-        <Button android:id="@+id/testBurstButton" android:layout_width="match_parent" android:layout_height="52dp"
-            android:layout_marginTop="8dp" android:text="Test jačeg alarma ×3 (32 sekunde)"
-            android:textAllCaps="false" android:textStyle="bold" android:textColor="@color/text_primary"
-            android:background="@drawable/bg_secondary" />
-        <TextView android:id="@+id/testBurstStatus" android:layout_width="match_parent"
-            android:layout_height="wrap_content" android:layout_marginTop="7dp"
-            android:text="Test ×3 (0/16/32 s) radi i tokom dana. Ostavi aplikaciju otvorenu."
-            android:textColor="@color/text_secondary" android:textSize="12sp" />
-        <Button android:id="@+id/snoreTestButton" android:layout_width="match_parent"
-            android:layout_height="54dp" android:layout_marginTop="14dp"
-            android:text="Testiraj prepoznavanje hrkanja (90 s)"
-            android:textAllCaps="false" android:textStyle="bold"
-            android:textColor="@color/button_text" android:background="@drawable/bg_primary" />
-        <TextView android:id="@+id/snoreTestStatus" android:layout_width="match_parent"
-            android:layout_height="wrap_content" android:layout_marginTop="8dp"
-            android:text="Test mikrofona i AI hrkanja radi u bilo koje doba dana. Ne čuva snimke ni noćnu istoriju."
-            android:textSize="12sp" android:textColor="@color/text_secondary" />
-        <TextView android:layout_width="match_parent" android:layout_height="wrap_content"
-            android:layout_marginTop="26dp" android:text="OVO PRAĆENJE" android:letterSpacing="0.10"
-            android:fontFamily="sans-serif-medium" android:textSize="12sp" android:textColor="@color/text_secondary" />
-        <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content"
-            android:layout_marginTop="9dp" android:background="@drawable/bg_card" android:padding="18dp"
-            android:orientation="vertical">
-            <TextView android:id="@+id/sessionTime" android:layout_width="match_parent" android:layout_height="wrap_content"
-                android:text="Nema aktivnog praćenja" android:textColor="@color/text_secondary" android:textSize="13sp" />
-            <TextView android:id="@+id/episodeStats" android:layout_width="match_parent" android:layout_height="wrap_content"
-                android:text="Epizode hrkanja: 0" android:layout_marginTop="10dp"
-                android:textColor="@color/text_primary" android:textSize="16sp" />
-            <TextView android:id="@+id/snoreStats" android:layout_width="match_parent" android:layout_height="wrap_content"
-                android:text="Procenjeno hrkanje: 0 min" android:layout_marginTop="8dp"
-                android:textColor="@color/text_primary" android:textSize="16sp" />
-            <TextView android:id="@+id/alertStats" android:layout_width="match_parent" android:layout_height="wrap_content"
-                android:text="Serije alarma: 0 • Obaveštenja: 0" android:layout_marginTop="8dp"
-                android:textColor="@color/text_primary" android:textSize="16sp" />
-        </LinearLayout>
-
-        <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content"
-            android:layout_marginTop="12dp" android:background="@drawable/bg_card"
-            android:padding="18dp" android:orientation="vertical">
-            <TextView android:layout_width="match_parent" android:layout_height="wrap_content"
-                android:text="NAPREDNA NOĆNA ANALIZA" android:textStyle="bold"
-                android:textColor="@color/text_primary" android:textSize="16sp" />
-            <TextView android:id="@+id/advancedAnalytics" android:layout_width="match_parent"
-                android:layout_height="wrap_content" android:layout_marginTop="10dp"
-                android:textColor="@color/text_primary" android:textSize="14sp" />
-            <TextView android:layout_width="match_parent" android:layout_height="wrap_content"
-                android:layout_marginTop="16dp" android:text="REAKCIJA NAKON ALARMA"
-                android:textStyle="bold" android:textColor="@color/text_primary" android:textSize="15sp" />
-            <TextView android:id="@+id/alertResponseDetails" android:layout_width="match_parent"
-                android:layout_height="wrap_content" android:layout_marginTop="8dp"
-                android:textColor="@color/text_secondary" android:textSize="13sp" />
-            <Button android:id="@+id/doctorPdfButton" android:layout_width="match_parent"
-                android:layout_height="50dp" android:layout_marginTop="12dp"
-                android:text="Izveštaj za lekara (PDF)" android:textAllCaps="false"
-                android:textColor="@color/button_text" android:background="@drawable/bg_primary" />
-        </LinearLayout>
-
-        <TextView android:id="@+id/diagnosticsText" android:layout_width="match_parent"
-            android:layout_height="wrap_content" android:layout_marginTop="13dp"
-            android:text="Dijagnostika će biti prikazana tokom praćenja."
-            android:textColor="@color/text_secondary" android:textSize="12sp" />
-        <TextView android:layout_width="match_parent" android:layout_height="wrap_content"
             android:layout_marginTop="26dp" android:text="EXPORT I IMPORT STATISTIKE" android:letterSpacing="0.10"
             android:fontFamily="sans-serif-medium" android:textSize="12sp" android:textColor="@color/text_secondary" />
         <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content"
@@ -256,80 +370,26 @@
                 android:text="Za vraćanje podataka koristi JSON: čuva do 365 završenih noći i podešavanja. CSV služi samo za Excel i ne može se importovati. WAV snimci nisu deo izvoza. Sačuvaj JSON pre reinstalacije aplikacije."
                 android:textColor="@color/text_secondary" android:textSize="12sp" />
         </LinearLayout>
-
-        <TextView android:layout_width="match_parent" android:layout_height="wrap_content"
-            android:layout_marginTop="26dp" android:text="HRKANJE PO SATIMA" android:letterSpacing="0.10"
-            android:fontFamily="sans-serif-medium" android:textSize="12sp" android:textColor="@color/text_secondary" />
-        <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content"
-            android:layout_marginTop="9dp" android:background="@drawable/bg_card" android:padding="16dp"
-            android:orientation="vertical">
-            <TextView android:id="@+id/hourlyDetails" android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:text="Satna statistika dostupna nakon nove sesije."
-                android:textColor="@color/text_secondary" android:textSize="13sp" />
-            <rs.snoreguard.mvp.SnoreBarChartView android:id="@+id/hourlyChart"
-                android:layout_width="match_parent" android:layout_height="190dp"
-                android:layout_marginTop="10dp"
-                android:contentDescription="Grafikon hrkanja od 22 do 08 časova" />
-        </LinearLayout>
-
-        <TextView android:layout_width="match_parent" android:layout_height="wrap_content"
-            android:layout_marginTop="26dp" android:text="POREĐENJE PRETHODNIH NOĆI" android:letterSpacing="0.10"
-            android:fontFamily="sans-serif-medium" android:textSize="12sp" android:textColor="@color/text_secondary" />
-        <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content"
-            android:layout_marginTop="9dp" android:background="@drawable/bg_card" android:padding="16dp"
-            android:orientation="vertical">
-            <TextView android:id="@+id/comparisonDetails" android:layout_width="match_parent"
-                android:layout_height="wrap_content" android:text="Još nema dovoljno podataka za poređenje."
-                android:textColor="@color/text_secondary" android:textSize="13sp" />
-            <rs.snoreguard.mvp.SnoreBarChartView android:id="@+id/comparisonChart"
-                android:layout_width="match_parent" android:layout_height="190dp"
-                android:layout_marginTop="10dp"
-                android:contentDescription="Grafikon događaja po analiziranom satu za uporedive noći" />
-        </LinearLayout>
-
-        <TextView android:layout_width="match_parent" android:layout_height="wrap_content"
-            android:layout_marginTop="26dp" android:text="ZVUČNI SNIMCI ZA LEKARA"
-            android:letterSpacing="0.10" android:fontFamily="sans-serif-medium"
-            android:textSize="12sp" android:textColor="@color/text_secondary" />
-        <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content"
-            android:layout_marginTop="9dp" android:background="@drawable/bg_card"
-            android:padding="16dp" android:orientation="vertical">
-            <TextView android:id="@+id/clipCountText" android:layout_width="match_parent"
-                android:layout_height="wrap_content" android:text="Nema sačuvanih snimaka."
-                android:textSize="13sp" android:textColor="@color/text_secondary" />
-            <LinearLayout android:id="@+id/clipList" android:layout_width="match_parent"
-                android:layout_height="wrap_content" android:orientation="vertical"
-                android:layout_marginTop="8dp" />
-            <Button android:id="@+id/exportClipReviewsButton"
-                android:layout_width="match_parent" android:layout_height="50dp"
-                android:layout_marginTop="12dp"
-                android:text="Izvezi ocene i beleške (CSV)" android:textAllCaps="false"
-                android:textColor="@color/text_primary" android:background="@drawable/bg_secondary" />
-            <TextView android:id="@+id/clipReviewStatus"
-                android:layout_width="match_parent" android:layout_height="wrap_content"
-                android:layout_marginTop="7dp"
-                android:text="Ocene su tvoje oznake za proveru lažnih alarma. CSV ne sadrži zvuk."
-                android:textColor="@color/text_secondary" android:textSize="12sp" />
-            <Button android:id="@+id/deleteAllClipsButton" android:layout_width="match_parent"
-                android:layout_height="50dp" android:layout_marginTop="12dp"
-                android:text="Obriši sve zvučne snimke" android:textAllCaps="false"
-                android:textColor="@color/text_primary" android:background="@drawable/bg_secondary" />
-            <TextView android:layout_width="match_parent" android:layout_height="wrap_content"
-                android:layout_marginTop="8dp" android:textSize="12sp"
-                android:text="Dodirni snimak, preslušaj ga i označi kao hrkanje ili lažni alarm. Možeš dodati belešku za lekara ili podeliti WAV. Oznake ne menjaju automatski AI model. Snimanje ne dijagnostikuje apneju."
-                android:textColor="@color/text_secondary" />
-        </LinearLayout>
-        <TextView android:layout_width="match_parent" android:layout_height="wrap_content"
-            android:layout_marginTop="26dp" android:text="PRETHODNE NOĆI" android:letterSpacing="0.10"
-            android:fontFamily="sans-serif-medium" android:textSize="12sp" android:textColor="@color/text_secondary" />
-        <TextView android:id="@+id/historyText" android:layout_width="match_parent" android:layout_height="wrap_content"
-            android:layout_marginTop="9dp" android:background="@drawable/bg_card" android:padding="18dp"
-            android:text="Još nema sačuvanih sesija." android:textColor="@color/text_secondary" android:textSize="14sp" />
-        <TextView android:id="@+id/errorText" android:layout_width="match_parent" android:layout_height="wrap_content"
-            android:layout_marginTop="16dp" android:text="" android:textColor="@color/warning" android:textSize="13sp" />
-        <TextView android:layout_width="match_parent" android:layout_height="wrap_content"
-            android:layout_marginTop="16dp" android:text="MVP • Nije medicinski uređaj niti test za apneju. Vibraciju sata treba proveriti tokom stvarnog sna."
-            android:textColor="@color/text_secondary" android:textSize="12sp" />
     </LinearLayout>
-</ScrollView>
+        </LinearLayout>
+    </ScrollView>
+    <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content"
+        android:orientation="horizontal" android:background="@color/card" android:padding="6dp">
+        <Button android:id="@+id/tabMonitor" android:layout_width="0dp" android:layout_weight="1" android:layout_height="56dp"
+            android:layout_marginHorizontal="2dp" android:minWidth="0dp" android:padding="2dp"
+            android:text="Praćenje" android:textSize="12sp" android:textAllCaps="false"
+            android:textColor="@color/text_primary" android:background="@drawable/bg_secondary" />
+        <Button android:id="@+id/tabStats" android:layout_width="0dp" android:layout_weight="1" android:layout_height="56dp"
+            android:layout_marginHorizontal="2dp" android:minWidth="0dp" android:padding="2dp"
+            android:text="Statistika" android:textSize="12sp" android:textAllCaps="false"
+            android:textColor="@color/text_primary" android:background="@drawable/bg_secondary" />
+        <Button android:id="@+id/tabClips" android:layout_width="0dp" android:layout_weight="1" android:layout_height="56dp"
+            android:layout_marginHorizontal="2dp" android:minWidth="0dp" android:padding="2dp"
+            android:text="Snimci" android:textSize="12sp" android:textAllCaps="false"
+            android:textColor="@color/text_primary" android:background="@drawable/bg_secondary" />
+        <Button android:id="@+id/tabSettings" android:layout_width="0dp" android:layout_weight="1" android:layout_height="56dp"
+            android:layout_marginHorizontal="2dp" android:minWidth="0dp" android:padding="2dp"
+            android:text="Podešavanja" android:textSize="12sp" android:textAllCaps="false"
+            android:textColor="@color/text_primary" android:background="@drawable/bg_secondary" />
+    </LinearLayout>
+</LinearLayout>

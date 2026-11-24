@@ -35,14 +35,14 @@ class SnoreBarChartView @JvmOverloads constructor(
     private var amounts = emptyList<Int>()
     private var hasData = false
 
-    fun showSeries(labels: List<String>, values: List<Int>, available: Boolean = true) {
+    fun showSeries(labels: List<String>, values: List<Int>, available: Boolean = true, unit: String = "detektovanih događaja") {
         require(labels.size == values.size)
         if (titles == labels && amounts == values && hasData == available) return
         titles = labels.toList()
         amounts = values.map { it.coerceAtLeast(0) }
         hasData = available
         contentDescription = if (available) {
-            labels.indices.joinToString("; ") { "${labels[it]}: ${amounts[it]} prepoznatih hrkanja" }
+            labels.indices.joinToString("; ") { "${labels[it]}: ${amounts[it]} $unit" }
         } else "Nema satnih podataka za ovu sesiju"
         invalidate()
     }

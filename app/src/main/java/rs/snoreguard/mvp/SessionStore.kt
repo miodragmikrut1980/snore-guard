@@ -43,6 +43,7 @@ class SessionStore(context: Context) {
             .put("stopReason", "")
             .put("timelineVersion", 1)
             .put("hourly", JSONObject())
+            .put("hourlyNotifications", JSONObject())
             .put("windowStart", windowStart)
             .put("windowEnd", windowEnd)
             .put("isTest", isTest)
@@ -97,6 +98,10 @@ class SessionStore(context: Context) {
     fun incrementNotifications() = synchronized(lock) {
         val active = activeOrNull() ?: return@synchronized
         active.put("notifications", active.optInt("notifications") + 1)
+        val histogram = active.optJSONObject("hourlyNotifications") ?: JSONObject()
+        val key = String.format(Locale.ROOT, "%02d", Calendar.getInstance().get(Calendar.HOUR_OF_DAY))
+        histogram.put(key, histogram.optInt(key, 0) + 1)
+        active.put("hourlyNotifications", histogram)
         prefs.edit().putString("active", active.toString()).apply()
     }
 
@@ -201,6 +206,10 @@ class SessionStore(context: Context) {
                     }
                 }
             }
+            if (obj.has("hourlyNotifications")) {
+                val alerts = obj.optJSONObject("hourlyNotifications") ?: error("Neispravna satna obaveštenja.")
+                require(NightHours.allLabels().all { alerts.optInt(it, 0) in 0..1_000_000 })
+            }
             if (obj.has("alertResponse")) require(AlertResponseRecord.read(obj) != null) { "Neispravna analiza alarma." }
             received.add(JSONObject(obj.toString()).also { AlertResponseRecord.finishInterrupted(it) })
         }
@@ -251,6 +260,10 @@ class SessionStore(context: Context) {
                         "Neispravan satni podatak."
                     }
                 }
+            }
+            if (obj.has("hourlyNotifications")) {
+                val alerts = obj.optJSONObject("hourlyNotifications") ?: error("Neispravna satna obaveštenja.")
+                require(NightHours.allLabels().all { alerts.optInt(it, 0) in 0..1_000_000 })
             }
             if (obj.has("alertResponse")) require(AlertResponseRecord.read(obj) != null) { "Neispravna analiza alarma." }
             received.add(JSONObject(obj.toString()).also { AlertResponseRecord.finishInterrupted(it) })
@@ -317,7 +330,7 @@ class SessionStore(context: Context) {
             "recognized_events", "alarm_series", "posted_notifications",
             "estimated_snoring_seconds", "stop_reason",
             "max_ai_gap_ms", "ai_gaps_over_5s"
-        ) + AlertResponseRecord.columns.map { "response_" + it } + NightHours.allLabels().map { "hour_${it}_events" }
+        ) + AlertResponseRecord.columns.map { "response_" + it } + NightHours.allLabels().map { "hour_${it}_events" } + NightHours.allLabels().map { "hour_${it}_notifications" }
         val text = StringBuilder().append(CsvCell.row(columns)).append("\r\n")
         val format = SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ssXXX", Locale.ROOT)
         val records = history()
@@ -345,7 +358,9 @@ class SessionStore(context: Context) {
             } + NightHours.allLabels().map { hour ->
                 if (hist == null) "" else hist.optInt(hour, 0).toString()
             }
-            text.append(CsvCell.row(values)).append("\r\n")
+            val alertsByHour = item.optJSONObject("hourlyNotifications")
+            val completeValues = values + NightHours.allLabels().map { if (alertsByHour == null) "" else alertsByHour.optInt(it, 0).toString() }
+            text.append(CsvCell.row(completeValues)).append("\r\n")
         }
         text.toString()
     }

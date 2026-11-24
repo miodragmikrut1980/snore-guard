@@ -26,8 +26,8 @@ android {
         applicationId = "rs.snoreguard.mvp"
         minSdk = 26
         targetSdk = 35
-        versionCode = 81
-        versionName = "0.8.1"
+        versionCode = 90
+        versionName = "0.9.0"
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
     signingConfigs {
