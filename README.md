@@ -1,6 +1,13 @@
 # SnoreGuard — Android + Huawei Watch GT 2
 
-**Current version: 0.3.3 (build 33).** Android 8+; Kotlin; local offline YAMNet.
+**Current version: 0.3.4 (build 34).** Android 8+; Kotlin; local offline YAMNet.
+
+## New in v0.3.4
+
+- Install the chosen sleeping-face / green-shield logo as Android's launcher icon (light variant).
+- Show the same logo in the application's home screen header.
+- Display the installed APK version as `v0.3.4 · build 34`.
+- Keep detection, statistics, night interval and the 0/16/32-second watch vibration schedule unchanged.
 
 ## New in v0.3.3
 

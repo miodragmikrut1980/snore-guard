@@ -1,5 +1,10 @@
 # Changelog
 
+## v0.3.4 — Selected SnoreGuard app logo
+- Add approved sleeping pillow/face + green shield branding to Android launcher and app home header.
+- Use `mipmap-nodpi/ic_launcher.webp` converted from the selected light-background icon.
+- Bump to versionName 0.3.4 / versionCode 34 without altering snoring detection, notification timings or session history.
+
 ## v0.3.3 — Two short snores in 15 seconds
 - Replace 3-of-5 full-second snore rule with distinct-event detection.
 - Analyze 975 ms YAMNet windows every 250 ms, with 4,000 new and 11,600 overlapping PCM samples.

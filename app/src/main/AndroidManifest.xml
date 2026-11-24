@@ -10,6 +10,8 @@
     <application
         android:allowBackup="false"
         android:label="SnoreGuard"
+        android:icon="@mipmap/ic_launcher"
+        android:roundIcon="@mipmap/ic_launcher"
         android:usesCleartextTraffic="false"
         android:theme="@style/Theme.SnoreGuard">
         <activity
