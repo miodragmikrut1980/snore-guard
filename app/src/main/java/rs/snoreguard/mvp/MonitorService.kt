@@ -139,6 +139,7 @@ class MonitorService : Service() {
         var classifier: YamnetSnoreDetector? = null
         var clipCapture: SnoreClipCapture? = null
         var lastScore = 0f
+        val analysisGaps = AnalysisHeartbeat()
         var finishReason = if (sessionTesting) "Test je završen" else "Izabrani interval je završen"
         try {
             classifier = YamnetSnoreDetector(this)
@@ -165,7 +166,9 @@ class MonitorService : Service() {
             }
             audio.startRecording()
             check(audio.recordingState == AudioRecord.RECORDSTATE_RECORDING) { "Mikrofon ne snima" }
-            store.update(engine, lastScore, modelActive = true)
+            store.update(engine, lastScore, modelActive = true,
+                maxInferenceGapMs = analysisGaps.maxGapMillis,
+                inferenceGaps5s = analysisGaps.stalls)
 
             // YAMNet requires 15,600 samples (~975 ms). Re-analyse every
             // 4,000 NEW samples (250 ms), retaining the previous 11,600.
@@ -208,6 +211,7 @@ class MonitorService : Service() {
                 clipCapture.accept(rolling.samples, offset, count)
 
                 lastScore = classifier.classify(rolling.samples)
+                analysisGaps.record(SystemClock.elapsedRealtime())
                 val snore = lastScore >= activeSensitivity.modelThreshold
                 if (snore) lastPositiveRealtime = SystemClock.elapsedRealtime()
 
@@ -225,11 +229,15 @@ class MonitorService : Service() {
                 }
                 if (alert) {
                     clipCapture.trigger()
-                    store.update(engine, lastScore, modelActive = true)
+                    store.update(engine, lastScore, modelActive = true,
+                maxInferenceGapMs = analysisGaps.maxGapMillis,
+                inferenceGaps5s = analysisGaps.stalls)
                     mainHandler.post { if (recording) alertBurst.start() }
                 }
                 if (engine.analysedFrames % 20 == 0) {
-                    store.update(engine, lastScore, modelActive = true)
+                    store.update(engine, lastScore, modelActive = true,
+                maxInferenceGapMs = analysisGaps.maxGapMillis,
+                inferenceGaps5s = analysisGaps.stalls)
                 }
             }
         } catch (e: Exception) {
@@ -248,7 +256,9 @@ class MonitorService : Service() {
             try { classifier?.close() } catch (_: Exception) { }
             try { wakeLock?.let { if (it.isHeld) it.release() } } catch (_: Exception) { }
             wakeLock = null
-            store.update(engine, lastScore, modelActive = classifier != null)
+            store.update(engine, lastScore, modelActive = classifier != null,
+                maxInferenceGapMs = analysisGaps.maxGapMillis,
+                inferenceGaps5s = analysisGaps.stalls)
             store.finish(if (stoppedByUser) "Ručno zaustavljeno" else finishReason)
             isActive = false
             isTestSession = false

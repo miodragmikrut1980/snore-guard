@@ -12,8 +12,28 @@ import java.text.SimpleDateFormat
 import java.util.Locale
 import java.util.Date
 
+/** User feedback is a subjective label, NOT a medically confirmed diagnosis. */
+enum class ClipLabel(val display: String) {
+    UNREVIEWED("Nije ocenjen"),
+    SNORE("Hrkanje"),
+    FALSE_ALARM("Lažni alarm"),
+    UNCERTAIN("Nisam siguran");
+
+    companion object {
+        fun fromStored(value: String?): ClipLabel =
+            values().firstOrNull { it.name == value } ?: UNREVIEWED
+    }
+}
+
 /** Private on-device WAV snippets; never public until shared by the user. */
-data class SnoreClip(val filename: String, val recordedAt: Long, val durationMs: Long, val bytes: Long)
+data class SnoreClip(
+    val filename: String,
+    val recordedAt: Long,
+    val durationMs: Long,
+    val bytes: Long,
+    val label: ClipLabel = ClipLabel.UNREVIEWED,
+    val note: String = ""
+)
 
 class SnoreClipStore(context: Context) {
     private val lock = Any()
@@ -30,7 +50,9 @@ class SnoreClipStore(context: Context) {
             if (!validFile.matches(name) || !File(dir, name).isFile) continue
             clips.add(
                 SnoreClip(name, item.optLong("recordedAt"),
-                    item.optLong("durationMs"), item.optLong("bytes"))
+                    item.optLong("durationMs"), item.optLong("bytes"),
+                    ClipLabel.fromStored(item.optString("label")),
+                    item.optString("note").take(160))
             )
         }
         clips.sortedByDescending { it.recordedAt }
@@ -78,7 +100,9 @@ class SnoreClipStore(context: Context) {
                 array.put(JSONObject().put("filename", clip.filename)
                     .put("recordedAt", clip.recordedAt)
                     .put("durationMs", clip.durationMs)
-                    .put("bytes", clip.bytes))
+                    .put("bytes", clip.bytes)
+                    .put("label", clip.label.name)
+                    .put("note", clip.note))
             }
             check(prefs.edit().putString("clips", array.toString()).commit()) {
                 "Cannot save clip metadata"
@@ -95,6 +119,49 @@ class SnoreClipStore(context: Context) {
         }
     }
 
+    /**
+     * Locally review an existing WAV. No sound is uploaded or used to train YAMNet.
+     * Unknown file names and path traversal attempts are rejected.
+     */
+    fun setReview(filename: String, label: ClipLabel, note: String): Boolean = synchronized(lock) {
+        if (!validFile.matches(filename)) return@synchronized false
+        val clip = list().firstOrNull { it.filename == filename } ?: return@synchronized false
+        val clean = note.trim().take(160)
+        val array = try {
+            JSONArray(prefs.getString("clips", "[]"))
+        } catch (_: Exception) { return@synchronized false }
+        var found = false
+        for (i in 0 until array.length()) {
+            val item = array.optJSONObject(i) ?: continue
+            if (item.optString("filename") == clip.filename) {
+                item.put("label", label.name)
+                item.put("note", clean)
+                found = true
+            }
+        }
+        found && prefs.edit().putString("clips", array.toString()).commit()
+    }
+
+    /** Review metadata only; no WAV data is exported by this method. */
+    fun exportReviewsCsv(): String = synchronized(lock) {
+        val header = listOf("recorded_local", "duration_seconds", "user_label",
+            "user_note", "wav_filename", "size_bytes")
+        val format = SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ssZ", Locale.ROOT)
+        buildString {
+            append(CsvCell.row(header)).append("\r\n")
+            for (clip in list()) {
+                append(CsvCell.row(listOf(
+                    format.format(Date(clip.recordedAt)),
+                    String.format(Locale.ROOT, "%.2f", clip.durationMs / 1000.0),
+                    clip.label.name,
+                    clip.note,
+                    clip.filename,
+                    clip.bytes.toString()
+                ))).append("\r\n")
+            }
+        }
+    }
+
     fun delete(filename: String): Boolean = synchronized(lock) {
         if (!validFile.matches(filename)) return@synchronized false
         val existing = list()
@@ -104,7 +171,9 @@ class SnoreClipStore(context: Context) {
             updated.put(JSONObject().put("filename", clip.filename)
                 .put("recordedAt", clip.recordedAt)
                 .put("durationMs", clip.durationMs)
-                .put("bytes", clip.bytes))
+                .put("bytes", clip.bytes)
+                .put("label", clip.label.name)
+                .put("note", clip.note))
         }
         // Remove the actual private WAV first. Never hide a file that failed to delete.
         val wav = File(dir, filename)

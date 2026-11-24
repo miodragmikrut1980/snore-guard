@@ -37,6 +37,8 @@ class SessionStore(context: Context) {
             .put("threshold", sensitivity.modelThreshold.toDouble())
             .put("alertMode", mode.name)
             .put("analysedFrames", 0)
+            .put("maxInferenceGapMs", 0)
+            .put("inferenceGaps5s", 0)
             .put("lastUpdate", System.currentTimeMillis())
             .put("stopReason", "")
             .put("timelineVersion", 1)
@@ -52,9 +54,17 @@ class SessionStore(context: Context) {
         prefs.edit().putString("active", active.toString()).putString("error", "").apply()
     }
 
-    fun update(engine: SnoreEngine, lastScore: Float, modelActive: Boolean) = synchronized(lock) {
+    fun update(
+        engine: SnoreEngine,
+        lastScore: Float,
+        modelActive: Boolean,
+        maxInferenceGapMs: Long = 0L,
+        inferenceGaps5s: Int = 0
+    ) = synchronized(lock) {
         val active = activeOrNull() ?: return@synchronized
-        active.put("analysedFrames", engine.analysedFrames)
+        active.put("maxInferenceGapMs", maxInferenceGapMs.coerceAtLeast(0L))
+            .put("inferenceGaps5s", inferenceGaps5s.coerceAtLeast(0))
+            .put("analysedFrames", engine.analysedFrames)
             .put("lastUpdate", System.currentTimeMillis())
             .put("snoreFrames", engine.snoreFrames)
             .put("episodes", engine.episodes)
@@ -236,7 +246,8 @@ class SessionStore(context: Context) {
         val columns = listOf(
             "start_local", "end_local", "detector_version", "sensitivity",
             "recognized_events", "alarm_series", "posted_notifications",
-            "estimated_snoring_seconds", "stop_reason"
+            "estimated_snoring_seconds", "stop_reason",
+            "max_ai_gap_ms", "ai_gaps_over_5s"
         ) + NightHours.allLabels().map { "hour_${it}_events" }
         val text = StringBuilder().append(CsvCell.row(columns)).append("\r\n")
         val format = SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ssXXX", Locale.ROOT)
@@ -256,7 +267,9 @@ class SessionStore(context: Context) {
                 item.optInt("alerts").toString(),
                 item.optInt("notifications").toString(),
                 seconds.toString(),
-                item.optString("stopReason")
+                item.optString("stopReason"),
+                if (item.has("maxInferenceGapMs")) item.optLong("maxInferenceGapMs").toString() else "",
+                if (item.has("inferenceGaps5s")) item.optInt("inferenceGaps5s").toString() else ""
             ) + NightHours.allLabels().map { hour ->
                 if (hist == null) "" else hist.optInt(hour, 0).toString()
             }

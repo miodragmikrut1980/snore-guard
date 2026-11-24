@@ -15,8 +15,8 @@ android {
         applicationId = "rs.snoreguard.mvp"
         minSdk = 26
         targetSdk = 35
-        versionCode = 62
-        versionName = "0.6.2"
+        versionCode = 70
+        versionName = "0.7.0"
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
     buildTypes {

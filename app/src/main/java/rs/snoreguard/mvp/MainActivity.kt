@@ -22,6 +22,9 @@ import android.os.Bundle
 import android.os.Handler
 import android.os.Looper
 import android.widget.Button
+import android.widget.EditText
+import android.text.InputFilter
+import android.text.InputType
 import android.widget.Switch
 import android.widget.TextView
 import android.widget.Toast
@@ -136,6 +139,15 @@ class MainActivity : Activity() {
                 MonitorService.isActive -> toast(
                     "Noćno praćenje je aktivno. Zaustavi ga na dugme 'Zaustavi praćenje'.")
                 else -> requirePermissionsThen("snore_test")
+            }
+        }
+        findViewById<Button>(R.id.exportClipReviewsButton).setOnClickListener {
+            if (clipStore.list().isEmpty()) {
+                toast("Nema snimaka za ocenjivanje.")
+            } else {
+                val date = SimpleDateFormat("yyyy-MM-dd", Locale.ROOT).format(Date())
+                createDocument("text/csv", "SnoreGuard-ocene-snimaka-$date.csv",
+                    REQUEST_EXPORT_CLIP_REVIEWS)
             }
         }
         findViewById<Button>(R.id.deleteAllClipsButton).setOnClickListener {
@@ -380,7 +392,12 @@ class MainActivity : Activity() {
         } else {
             "Završetak: ${item.optString("stopReason", "Nepoznato")}"
         }
-        diagnostics.text = "Obrađeno prozora: $frames • prag: ${"%.2f".format(Locale.US, threshold)}\n$freshness"
+        val aiGaps = if (item.has("inferenceGaps5s")) {
+            "Zastoji AI analize duži od 5 s: ${item.optInt("inferenceGaps5s")} • " +
+                "najduži razmak: ${item.optLong("maxInferenceGapMs") / 1000.0} s. " +
+                "To nije potvrda da je GT 2 vibrirao."
+        } else "Dijagnostika zastoja nije dostupna za ovu stariju sesiju."
+        diagnostics.text = "Obrađeno prozora: $frames • prag: ${"%.2f".format(Locale.US, threshold)}\n$aiGaps\n$freshness"
     }
 
     private fun showCharts(latest: JSONObject?) {
@@ -441,19 +458,24 @@ class MainActivity : Activity() {
         val uri = data?.data ?: return
         try {
             when (requestCode) {
-                REQUEST_EXPORT_CSV, REQUEST_BACKUP -> {
-                    val content = if (requestCode == REQUEST_EXPORT_CSV) {
-                        store.exportCsv()
-                    } else {
-                        store.exportBackup()
+                REQUEST_EXPORT_CSV, REQUEST_BACKUP, REQUEST_EXPORT_CLIP_REVIEWS -> {
+                    val content = when (requestCode) {
+                        REQUEST_EXPORT_CSV -> store.exportCsv()
+                        REQUEST_EXPORT_CLIP_REVIEWS -> clipStore.exportReviewsCsv()
+                        else -> store.exportBackup()
                     }
                     val target = contentResolver.openOutputStream(uri, "w")
                         ?: throw IllegalStateException("Ne mogu da otvorim odredište.")
                     target.bufferedWriter(Charsets.UTF_8).use { it.write(content) }
-                    exportStatus.text = if (requestCode == REQUEST_EXPORT_CSV) {
-                        "✓ CSV statistika je sačuvana u izabranom folderu."
+                    if (requestCode == REQUEST_EXPORT_CLIP_REVIEWS) {
+                        findViewById<TextView>(R.id.clipReviewStatus).text =
+                            "✓ Ocene snimaka i beleške su sačuvane kao CSV. WAV se izvozi posebno."
                     } else {
-                        "✓ Export završen: ${store.history().length()} završenih noći sa podešavanjima. Sačuvaj JSON fajl."
+                        exportStatus.text = if (requestCode == REQUEST_EXPORT_CSV) {
+                            "✓ CSV statistika je sačuvana u izabranom folderu."
+                        } else {
+                            "✓ Export završen: ${store.history().length()} završenih noći sa podešavanjima. Sačuvaj JSON fajl."
+                        }
                     }
                 }
                 REQUEST_RESTORE -> {
@@ -570,8 +592,12 @@ class MainActivity : Activity() {
         val clips = clipStore.list()
         clipCountText.text = if (clips.isEmpty()) {
             "Nema snimaka. Uključi opciju čuvanja zvuka pre noćnog praćenja."
-        } else "Sačuvano: ${clips.size} WAV snimaka. Dodirni za preslušavanje ili deljenje."
-        val signature = clips.joinToString("|") { it.filename }
+        } else {
+            val reviewed = clips.count { it.label != ClipLabel.UNREVIEWED }
+            "Sačuvano: ${clips.size} WAV snimaka • ocenjeno: $reviewed. " +
+                "Dodirni snimak za slušanje, ocenu ili belešku."
+        }
+        val signature = clips.joinToString("|") { it.filename + ":" + it.label.name + ":" + it.note }
         if (signature == lastClipSignature) return
         lastClipSignature = signature
         clipList.removeAllViews()
@@ -579,7 +605,8 @@ class MainActivity : Activity() {
         for (clip in clips.take(40)) {
             val button = Button(this).apply {
                 text = format.format(Date(clip.recordedAt)) + "  •  " +
-                    (clip.durationMs / 1000) + " s  •  WAV"
+                    (clip.durationMs / 1000) + " s • " + clip.label.display +
+                    if (clip.note.isBlank()) "" else " • Beleška: " + clip.note.take(45)
                 isAllCaps = false
                 setTextColor(getColor(R.color.text_primary))
                 setOnClickListener { chooseClipAction(clip) }
@@ -588,12 +615,60 @@ class MainActivity : Activity() {
         }
     }
 
+    private fun editClipLabel(clip: SnoreClip) {
+        val labels = ClipLabel.values()
+        var selected = clip.label.ordinal
+        AlertDialog.Builder(this)
+            .setTitle("Ocenjivanje snimka")
+            .setMessage("Ovo je tvoja subjektivna procena, ne automatska dijagnoza.")
+            .setSingleChoiceItems(labels.map { it.display }.toTypedArray(), selected) { _, which ->
+                selected = which
+            }
+            .setNegativeButton("Otkaži", null)
+            .setPositiveButton("Sačuvaj") { _, _ ->
+                if (clipStore.setReview(clip.filename, labels[selected], clip.note)) {
+                    lastClipSignature = ""
+                    showSavedClips()
+                } else toast("Ocena nije sačuvana.")
+            }.show()
+    }
+
+    private fun editClipNote(clip: SnoreClip) {
+        val input = EditText(this).apply {
+            setText(clip.note)
+            hint = "Npr. spavao sam na leđima"
+            inputType = InputType.TYPE_CLASS_TEXT or InputType.TYPE_TEXT_FLAG_MULTI_LINE or
+                InputType.TYPE_TEXT_FLAG_CAP_SENTENCES
+            filters = arrayOf(InputFilter.LengthFilter(160))
+            minLines = 2
+            maxLines = 4
+            setSelection(text.length)
+        }
+        val padding = (16 * resources.displayMetrics.density).toInt()
+        val container = LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL
+            setPadding(padding, padding / 2, padding, 0)
+            addView(input)
+        }
+        AlertDialog.Builder(this)
+            .setTitle("Beleška uz snimak")
+            .setView(container)
+            .setNegativeButton("Otkaži", null)
+            .setPositiveButton("Sačuvaj") { _, _ ->
+                if (clipStore.setReview(clip.filename, clip.label, input.text.toString())) {
+                    lastClipSignature = ""
+                    showSavedClips()
+                } else toast("Beleška nije sačuvana.")
+            }.show()
+    }
+
     private fun chooseClipAction(clip: SnoreClip) {
         AlertDialog.Builder(this)
-            .setTitle("Snimak hrkanja")
+            .setTitle("Zvučni snimak • " + clip.label.display)
             .setMessage("Trajanje: " + (clip.durationMs / 1000) +
-                " s. Sadrži stvarni zvuk iz sobe i može biti osetljiv.")
-            .setItems(arrayOf("Preslušaj", "Podeli WAV sa lekarom", "Obriši")) { _, which ->
+                " s. Zvuk može sadržati govor i druge privatne informacije.")
+            .setItems(arrayOf("Preslušaj", "Označi: hrkanje / lažni alarm",
+                "Dodaj ili izmeni belešku", "Podeli WAV sa lekarom", "Obriši")) { _, which ->
                 val file = clipStore.fileFor(clip.filename)
                 if (file == null) {
                     toast("Snimak nije dostupan.")
@@ -613,7 +688,9 @@ class MainActivity : Activity() {
                         stopPlayback()
                         toast("Ne može da se pusti snimak: " + error.message)
                     }
-                    1 -> try {
+                    1 -> editClipLabel(clip)
+                    2 -> editClipNote(clip)
+                    3 -> try {
                         val uri = FileProvider.getUriForFile(
                             this, packageName + ".files", file)
                         val send = Intent(Intent.ACTION_SEND).apply {
@@ -626,7 +703,7 @@ class MainActivity : Activity() {
                     } catch (error: Exception) {
                         toast("Deljenje nije uspelo: " + error.message)
                     }
-                    2 -> if (MonitorService.isActive) {
+                    4 -> if (MonitorService.isActive) {
                         toast("Zaustavi praćenje pre brisanja snimka.")
                     } else {
                         AlertDialog.Builder(this)
@@ -782,5 +859,6 @@ class MainActivity : Activity() {
         private const val REQUEST_EXPORT_CSV = 5001
         private const val REQUEST_BACKUP = 5002
         private const val REQUEST_RESTORE = 5003
+        private const val REQUEST_EXPORT_CLIP_REVIEWS = 5004
     }
 }

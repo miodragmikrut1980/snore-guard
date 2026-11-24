@@ -250,13 +250,23 @@
             <LinearLayout android:id="@+id/clipList" android:layout_width="match_parent"
                 android:layout_height="wrap_content" android:orientation="vertical"
                 android:layout_marginTop="8dp" />
+            <Button android:id="@+id/exportClipReviewsButton"
+                android:layout_width="match_parent" android:layout_height="50dp"
+                android:layout_marginTop="12dp"
+                android:text="Izvezi ocene i beleške (CSV)" android:textAllCaps="false"
+                android:textColor="@color/text_primary" android:background="@drawable/bg_secondary" />
+            <TextView android:id="@+id/clipReviewStatus"
+                android:layout_width="match_parent" android:layout_height="wrap_content"
+                android:layout_marginTop="7dp"
+                android:text="Ocene su tvoje oznake za proveru lažnih alarma. CSV ne sadrži zvuk."
+                android:textColor="@color/text_secondary" android:textSize="12sp" />
             <Button android:id="@+id/deleteAllClipsButton" android:layout_width="match_parent"
                 android:layout_height="50dp" android:layout_marginTop="12dp"
                 android:text="Obriši sve zvučne snimke" android:textAllCaps="false"
                 android:textColor="@color/text_primary" android:background="@drawable/bg_secondary" />
             <TextView android:layout_width="match_parent" android:layout_height="wrap_content"
                 android:layout_marginTop="8dp" android:textSize="12sp"
-                android:text="Dodirni snimak da ga poslušaš, podeliš kao WAV ili obrišeš. Snimanje ne dijagnostikuje apneju."
+                android:text="Dodirni snimak, preslušaj ga i označi kao hrkanje ili lažni alarm. Možeš dodati belešku za lekara ili podeliti WAV. Oznake ne menjaju automatski AI model. Snimanje ne dijagnostikuje apneju."
                 android:textColor="@color/text_secondary" />
         </LinearLayout>
         <TextView android:layout_width="match_parent" android:layout_height="wrap_content"

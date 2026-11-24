@@ -1,5 +1,14 @@
 # Changelog
 
+## v0.7.0 — Clip review and inference diagnostics
+- Subjectively tag saved WAVs as snoring / false alarm / unsure / unreviewed.
+- Attach an optional local 160-character note to each saved audio clip; preserve user reviews when more clips are stored.
+- Export a separate CSV report with local clip timestamps, reviewed labels, notes, duration and filenames; no WAV audio in CSV.
+- Extend per-session reliability metadata with maximum delay between consecutive AI classification completions and count of gaps over 5 seconds.
+- Show metrics in the monitoring diagnostics and include them in the regular statistics CSV (blank for older sessions).
+- Tests for stored-label compatibility and deterministic monotonic analysis-gap accounting.
+- Does not claim self-training, improved clinical detection accuracy, proof of GT 2 vibration or automatic battery optimization.
+
 ## v0.6.2 — Start/stop detection test using the same button
 - In the 90-second snore detection test, the original button changes to **Zaustavi test hrkanja**.
 - Tapping it requests the existing microphone foreground service STOP action and shows **Zaustavljam test…**.

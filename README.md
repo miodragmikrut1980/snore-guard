@@ -1,6 +1,15 @@
 # SnoreGuard — Android + Huawei Watch GT 2
 
-**Current version: 0.6.2 (build 62).** Android 8+; Kotlin; local offline YAMNet.
+**Current version: 0.7.0 (build 70).** Android 8+; Kotlin; local offline YAMNet.
+
+## New in v0.7.0 — review feedback and analysis reliability
+
+- **User review of saved snoring WAVs:** tap any recording, choose **Označi: hrkanje / lažni alarm**, then select *Hrkanje*, *Lažni alarm*, *Nisam siguran*, or *Nije ocenjen*. These are user-supplied labels, not medical judgments.
+- **Private notes:** add a note of up to 160 characters (e.g. sleep position or possible TV noise) to any WAV. Labels and notes remain in local app storage alongside that clip, including when additional clips are saved.
+- **Export review metadata CSV:** separate button within the **ZVUČNI SNIMCI ZA LEKARA** section exports filenames, local recording timestamps, audio duration, user labels and notes. WAV audio is **not included**; share any desired WAV explicitly using Android's chooser. This CSV cannot be reimported. Since WAV and annotations are private app files, export the CSV and WAVs individually before uninstalling an APK.
+- **Inference heartbeat diagnostics:** a monotonic timer records the largest gap between completed AI inference windows and how many gaps exceeded five seconds. These appear under current-session diagnostics and in statistics CSV for new sessions.
+- **Limits:** Long inference gaps are merely a troubleshooting signal; they do **not** prove the microphone stopped, a snore was missed or the Huawei watch failed to vibrate. Neither user feedback nor notes retrain or automatically recalibrate YAMNet. There is no clinical validation for apnea or sleep-disordered breathing.
+- The existing adjustable schedule, 90-second stop/start test, optional audio clips, and JSON history export/import stay unchanged. Raw audio is not uploaded to any server.
 
 ## New in v0.6.2
 

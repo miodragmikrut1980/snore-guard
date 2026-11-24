@@ -1,3 +1,34 @@
+# SnoreGuard v0.7.0 — review and diagnostic test plan
+
+## CI
+- [ ] `./gradlew testDebugUnitTest assembleDebug` succeeds on SDK 35 / JDK 17
+- [ ] Existing alarm, mic schedule, night stats, CSV and WAV tests pass
+- [ ] New ClipLabel tests: backward-compatible unreviewed default, valid labels
+- [ ] New AnalysisHeartbeat tests: exact 5-second threshold, longer gaps and backwards time
+
+## Real-device verification
+- [ ] Record a WAV with opt-in enabled; tap the clip and mark Hrkanje
+- [ ] Change to Lažni alarm / Nisam siguran / Nije ocenjen, close and reopen the app
+- [ ] Add a 160-character note, edit or remove the note; verify updates persist
+- [ ] Save another WAV and verify original labels/notes remain intact
+- [ ] Delete a WAV; verify metadata and actual private file are deleted
+- [ ] Export feedback CSV and confirm label, timestamp, duration and notes
+- [ ] Export with notes beginning '=' or '+' and ensure Excel does not execute formulas
+- [ ] Confirm CSV contains no audio data; share WAV explicitly via file provider
+- [ ] Start 90-second detection test anytime; same button stops safely
+- [ ] Confirm new sessions display analysis gaps and older sessions show 'not available'
+- [ ] Lock Xiaomi 14T during a long monitoring session and compare heartbeat gaps
+- [ ] Confirm alert notifications reach GT 2 in awake/sleep/DND states as applicable
+- [ ] Stop then export JSON stats; verify 365-night history migration works
+
+## Privacy and clinical boundaries
+- [ ] Labels and notes do not train YAMNet or leave the device automatically
+- [ ] Feedback CSV is export-only (audio excluded), and is not included in JSON history backup
+- [ ] No medical diagnosis, apnea claims or watch-vibration delivery confirmation
+- [ ] No INTERNET app permission
+- [ ] Debug-signature upgrades can require uninstall: export JSON, feedback CSV, and selected WAVs first
+
+
 # SnoreGuard v0.6.1 — statistics export/import checks
 
 ## Automated
