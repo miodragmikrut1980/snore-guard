@@ -5,7 +5,6 @@ import android.app.Activity
 import android.app.AlertDialog
 import android.app.TimePickerDialog
 import android.content.ClipData
-import android.media.MediaPlayer
 import android.widget.LinearLayout
 import androidx.core.content.FileProvider
 import android.app.NotificationManager
@@ -378,13 +377,14 @@ class MainActivity : Activity() {
         findViewById<TextView>(R.id.selectedNightSummary).text = sessionSummary(item)
         val alarms = item?.optJSONObject("hourlyNotifications")
         val hourly = item?.optJSONObject("hourly")
-        findViewById<TextView>(R.id.alertTimeline).text = if (alarms == null || hourly == null)
+        findViewById<TextView>(R.id.alertTimeline).text = if (item == null || alarms == null || hourly == null)
             "Vremenska linija alarma: dostupna za sesije od v0.9.0. Satno hrkanje ostaje u grafikonu."
         else {
             val hours = NightHours.labelsForWindow(item.optInt("windowStart",1320).coerceIn(0,1439),
                 item.optInt("windowEnd",480).coerceIn(0,1439))
             "VREMENSKA LINIJA PO SATIMA\nHrkanja / poslata obaveštenja\n" +
-                hours.joinToString("\n") { hour -> "$hour:00   ${hourly.optInt(hour)}  /  ${alarms.optInt(hour)}" }
+                hours.joinToString("\n") { hour -> "$hour:00   ${hourly.optInt(hour)}  /  ${alarms.optInt(hour)}" } +
+                "\nNula označava odsustvo zapisa, ne dokaz kontinuiranog praćenja ili odsustva hrkanja."
         }
         val signature = rows.joinToString("|") { "${it.optLong("start")}:${it.optLong("end")}:${it.optInt("episodes")}:${it.optInt("analysedFrames")}:${it.optString("sensitivity")}" } +
             "|" + (item?.optString("sensitivity") ?: "") + "|" + java.time.LocalDate.now()
