@@ -1,5 +1,8 @@
 # Changelog
 
+## v0.9.1 — Night archive fixes
+- Clarify missing hourly data and guard nullable history selection.
+
 ## v0.9.0 — Night-friendly navigation and history
 - Four fixed tabs: monitoring, statistics, recordings, settings; live status remains visible.
 - Last completed session summary, calendar selection (start date), multiple sessions on the same date, seven/30-day weighted trends.
