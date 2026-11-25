@@ -157,6 +157,27 @@
                 android:text="Izveštaj za lekara (PDF)" android:textAllCaps="false"
                 android:textColor="@color/button_text" android:background="@drawable/bg_primary" />
         </LinearLayout>
+        <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content"
+            android:layout_marginTop="14dp" android:background="@drawable/bg_card"
+            android:padding="16dp" android:orientation="vertical">
+            <TextView android:layout_width="match_parent" android:layout_height="wrap_content"
+                android:text="HUAWEI HEALTH / FAZE SNA" android:textStyle="bold"
+                android:textColor="@color/text_primary" android:textSize="16sp" />
+            <Button android:id="@+id/readSleepButton" android:layout_width="match_parent"
+                android:layout_height="50dp" android:layout_marginTop="8dp" android:textAllCaps="false"
+                android:text="Učitaj san iz Health Connect" android:background="@drawable/bg_primary"
+                android:textColor="@color/button_text" />
+            <Button android:id="@+id/manageSleepButton" android:layout_width="match_parent"
+                android:layout_height="48dp" android:layout_marginTop="6dp" android:textAllCaps="false"
+                android:text="Health Connect – dozvole i izvori" android:background="@drawable/bg_secondary"
+                android:textColor="@color/text_primary" />
+            <TextView android:id="@+id/sleepDetails" android:layout_width="match_parent"
+                android:layout_height="wrap_content" android:layout_marginTop="8dp" android:textSize="13sp"
+                android:textColor="@color/text_secondary" android:text="Učitaj završenu sesiju sna. Podaci se ne čuvaju." />
+            <rs.snoreguard.mvp.SleepTimelineView android:id="@+id/sleepTimeline"
+                android:layout_width="match_parent" android:layout_height="215dp" android:visibility="gone"
+                android:contentDescription="Faze sna i vremenske oznake detektovanih hrkanja i poslatih obaveštenja" />
+        </LinearLayout>
         <TextView android:layout_width="match_parent" android:layout_height="wrap_content"
             android:layout_marginTop="26dp" android:text="HRKANJE PO SATIMA" android:letterSpacing="0.10"
             android:fontFamily="sans-serif-medium" android:textSize="12sp" android:textColor="@color/text_secondary" />

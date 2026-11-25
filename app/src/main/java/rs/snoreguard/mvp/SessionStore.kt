@@ -44,6 +44,7 @@ class SessionStore(context: Context) {
             .put("timelineVersion", 1)
             .put("hourly", JSONObject())
             .put("hourlyNotifications", JSONObject())
+            .put("eventOffsetsV1", "").put("notificationOffsetsV1", "")
             .put("windowStart", windowStart)
             .put("windowEnd", windowEnd)
             .put("isTest", isTest)
@@ -91,6 +92,7 @@ class SessionStore(context: Context) {
         val key = String.format(Locale.ROOT, "%02d", hour)
         histogram.put(key, histogram.optInt(key, 0) + 1)
         active.put("hourly", histogram)
+        recordOffset(active, "eventOffsetsV1", timestampMillis, SleepTimeline.SNORE_LIMIT)
         prefs.edit().putString("active", active.toString()).apply()
     }
 
@@ -102,7 +104,25 @@ class SessionStore(context: Context) {
         val key = String.format(Locale.ROOT, "%02d", Calendar.getInstance().get(Calendar.HOUR_OF_DAY))
         histogram.put(key, histogram.optInt(key, 0) + 1)
         active.put("hourlyNotifications", histogram)
+        recordOffset(active, "notificationOffsetsV1", System.currentTimeMillis(), SleepTimeline.ALERT_LIMIT)
         prefs.edit().putString("active", active.toString()).apply()
+    }
+
+    private fun recordOffset(active: JSONObject, key: String, timestamp: Long, limit: Int) {
+        val start = active.optLong("start")
+        if (start <= 0 || timestamp < start) return
+        active.put(key, SleepTimeline.append(active.optString(key), (timestamp-start)/1000L, limit))
+    }
+    private fun validateOffsets(obj: JSONObject) {
+        val duration = (obj.optLong("end") - obj.optLong("start")) / 1000L
+        listOf("eventOffsetsV1" to SleepTimeline.SNORE_LIMIT,
+            "notificationOffsetsV1" to SleepTimeline.ALERT_LIMIT).forEach { (key, limit) ->
+            if (obj.has(key)) {
+                val raw = obj.opt(key) as? String ?: throw IllegalArgumentException("Neispravne vremenske oznake.")
+                val values = SleepTimeline.parse(raw, limit) ?: throw IllegalArgumentException("Neispravne vremenske oznake.")
+                require(values.all { it.toLong() <= duration }) { "Vremenska oznaka van sesije." }
+            }
+        }
     }
 
     fun saveFinalResponse(snapshot: AlertResponseTracker.Snapshot) = synchronized(lock) {
@@ -211,6 +231,7 @@ class SessionStore(context: Context) {
                 require(NightHours.allLabels().all { alerts.optInt(it, 0) in 0..1_000_000 })
             }
             if (obj.has("alertResponse")) require(AlertResponseRecord.read(obj) != null) { "Neispravna analiza alarma." }
+            validateOffsets(obj)
             received.add(JSONObject(obj.toString()).also { AlertResponseRecord.finishInterrupted(it) })
         }
         val preferences = root.optJSONObject("settings")
@@ -266,6 +287,7 @@ class SessionStore(context: Context) {
                 require(NightHours.allLabels().all { alerts.optInt(it, 0) in 0..1_000_000 })
             }
             if (obj.has("alertResponse")) require(AlertResponseRecord.read(obj) != null) { "Neispravna analiza alarma." }
+            validateOffsets(obj)
             received.add(JSONObject(obj.toString()).also { AlertResponseRecord.finishInterrupted(it) })
         }
         val preferences = root.optJSONObject("settings")

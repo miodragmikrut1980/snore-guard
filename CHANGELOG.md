@@ -1,5 +1,11 @@
 # Changelog
 
+## v0.10.0 — Health Connect sleep integration (Android 14+)
+- User-requested read-only sleep session and stage data for a selected completed SnoreGuard night; source package shown, explicit record choice if multiple overlap.
+- Local sleep timeline with detected events and posted notification markers at one-second resolution for new nights; bounded first 256 events and 128 notifications, independent full hourly totals. Missing and ambiguous stages remain unknown.
+- No Huawei credentials, server, sleep data persistence, writes, or automatic stage-based alerts. Health Connect permission is optional and revocable. Actual Huawei/GT2 sync and Android permission UI require device validation.
+- Tests for stage boundaries, gaps, overlap and bounded timestamps. Older sessions do not have precise markers.
+
 ## v0.9.2 — Direct clip playback and alarm-response timing
 - Direct play button per WAV, and remove message competing with the review choices in the rating dialog.
 - Show observed settling and sustained-quiet percentages over valid 60-second observations only.

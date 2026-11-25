@@ -70,6 +70,9 @@ class MainActivity : Activity() {
     private lateinit var snoreTestStatus: TextView
     private var testStopRequested = false
     private var clipPlayer: ClipPlayer? = null
+    private var sleepGeneration = 0
+    private var sleepSelection = ""
+    private var sleepChoiceDialog: AlertDialog? = null
     private var currentTab = 0
     private var selectedNightStart: Long? = null
     private var selectedNightEnd: Long? = null
@@ -299,6 +302,13 @@ class MainActivity : Activity() {
             selectedNightStart = null; selectedNightEnd = null; refresh()
         }
         findViewById<Button>(R.id.pickNightButton).setOnClickListener { pickNight() }
+        findViewById<Button>(R.id.readSleepButton).setOnClickListener { readSleep() }
+        findViewById<Button>(R.id.manageSleepButton).setOnClickListener {
+            if (Build.VERSION.SDK_INT < 34) toast("Integracija zahteva Android 14 ili noviji.")
+            else try {
+                startActivity(Intent("android.health.connect.action.HEALTH_HOME_SETTINGS"))
+            } catch (_: Exception) { toast("Otvori Health Connect u sistemskim podešavanjima.") }
+        }
         selectTab(currentTab)
     }
 
@@ -311,6 +321,7 @@ class MainActivity : Activity() {
 
     private fun selectTab(index: Int) {
         if (index != 2) stopPlayback()
+        if (index != 1) clearSleep()
         currentTab = index
         val pages = listOf(R.id.pageMonitor, R.id.pageStats, R.id.pageClips, R.id.pageSettings)
         val tabs = listOf(R.id.tabMonitor, R.id.tabStats, R.id.tabClips, R.id.tabSettings)
@@ -477,6 +488,11 @@ class MainActivity : Activity() {
 
     override fun onRequestPermissionsResult(requestCode: Int, permissions: Array<out String>, grantResults: IntArray) {
         super.onRequestPermissionsResult(requestCode, permissions, grantResults)
+        if (requestCode == REQUEST_SLEEP) {
+            toast(if (grantResults.firstOrNull() == PackageManager.PERMISSION_GRANTED)
+                "Dozvola data. Dodirni Učitaj san." else "Dozvola za san nije data.")
+            return
+        }
         if (requestCode == REQUEST_PERMISSIONS) {
             val action = pendingAction
             pendingAction = null
@@ -548,6 +564,12 @@ class MainActivity : Activity() {
             showCharts(selected)
             showAdvancedAnalytics(selected, false)
             showAlertResponse(selected)
+            val key = selected?.let { it.optLong("start").toString() + ":" + it.optLong("end") }.orEmpty()
+            if (key != sleepSelection || (Build.VERSION.SDK_INT >= 34 &&
+                    checkSelfPermission("android.permission.health.READ_SLEEP") != PackageManager.PERMISSION_GRANTED)) {
+                clearSleep()
+                sleepSelection = key
+            }
         }
         if (currentTab == 2) showSavedClips()
         errors.text = store.error()
@@ -639,6 +661,93 @@ class MainActivity : Activity() {
             } else "Jedna uporediva noć: " + NightReport.decimal(newest) + " događaja/h."
             "$delta Grafikon: zaokruženi događaji po analiziranom satu, ista osetljivost, najmanje 30 min i 80% pokrivenosti."
         }
+    }
+
+    private fun clearSleep() {
+        sleepGeneration++
+        sleepChoiceDialog?.dismiss(); sleepChoiceDialog = null
+        findViewById<SleepTimelineView>(R.id.sleepTimeline)?.show(null)
+        findViewById<TextView>(R.id.sleepDetails)?.text =
+            "Učitaj san za izabranu završenu noć. Faze zavise od izvora. Podaci se ne čuvaju."
+    }
+
+    private fun readSleep() {
+        if (Build.VERSION.SDK_INT < 34) {
+            toast("Integracija zahteva Android 14 ili noviji."); return
+        }
+        val rows = records()
+        val item = rows.firstOrNull { it.optLong("start") == selectedNightStart && it.optLong("end") == selectedNightEnd }
+            ?: rows.firstOrNull()
+        if (item == null) { toast("Prvo je potrebna završena sesija."); return }
+        if (checkSelfPermission("android.permission.health.READ_SLEEP") != PackageManager.PERMISSION_GRANTED) {
+            AlertDialog.Builder(this).setTitle("Dozvola za čitanje sna")
+                .setMessage("SnoreGuard će samo na zahtev čitati sesije i faze sna iz Health Connect. Podaci ostaju na telefonu i ne ulaze u backup. Dozvolu možeš opozvati.")
+                .setNegativeButton("Otkaži", null)
+                .setPositiveButton("Dozvoli") { _, _ ->
+                    requestPermissions(arrayOf("android.permission.health.READ_SLEEP"), REQUEST_SLEEP)
+                }.show()
+            return
+        }
+        clearSleep()
+        val generation = sleepGeneration
+        val start = item.optLong("start")
+        val end = item.optLong("end")
+        if (start <= 0 || end <= start) { toast("Vreme sesije nije dostupno."); return }
+        val details = findViewById<TextView>(R.id.sleepDetails)
+        details.text = "Čitam Health Connect…"
+        HuaweiSleepReader.read(this, start, end) { nights, error ->
+            if (isDestroyed || isFinishing || generation != sleepGeneration || currentTab != 1 ||
+                checkSelfPermission("android.permission.health.READ_SLEEP") != PackageManager.PERMISSION_GRANTED) return@read
+            if (nights.isNullOrEmpty()) {
+                details.text = error ?: "Nema preklapajućeg sna. Sinhronizuj GT2 u Huawei Health, proveri deljenje sna i izvore u Health Connect. Stariji podaci mogu biti nedostupni."
+                return@read
+            }
+            if (nights.size == 1) renderSleep(item, nights.first())
+            else {
+                val options = nights.take(30)
+                sleepChoiceDialog = AlertDialog.Builder(this).setTitle("Izaberi zapis sna i izvor")
+                    .setItems(options.map { it.source + " • " + dateFormat.format(Date(it.start)) +
+                        "–" + dateFormat.format(Date(it.end)) }.toTypedArray()) { _, which ->
+                        if (generation == sleepGeneration) renderSleep(item, options[which])
+                    }.setNegativeButton("Otkaži") { _, _ -> details.text = "Nije izabran zapis sna." }.show()
+            }
+        }
+    }
+
+    private fun renderSleep(item: JSONObject, night: SleepTimeline.Night) {
+        val start = item.optLong("start")
+        val end = item.optLong("end")
+        fun offsets(key: String, limit: Int): List<Long>? {
+            if (!item.has(key)) return null
+            return SleepTimeline.parse(item.optString(key),limit)?.map { start + it*1000L }
+                ?.filter { it in start..end }
+        }
+        val events = offsets("eventOffsetsV1", SleepTimeline.SNORE_LIMIT)
+        val notifications = offsets("notificationOffsetsV1", SleepTimeline.ALERT_LIMIT)
+        val durations = SleepTimeline.durationByKind(night)
+        val text = StringBuilder("Izvor: ").append(night.source)
+            .append("\nZapis: ").append(dateFormat.format(Date(night.start))).append(" – ").append(dateFormat.format(Date(night.end)))
+            .append("\nPreklapanje sa praćenjem: ").append(SleepTimeline.overlap(start,end,night)/60000).append(" min")
+        if (night.stages.isEmpty()) text.append("\nIzvor nije prosledio faze sna.")
+        else durations.filterValues { it > 0 }.forEach { (kind, ms) ->
+            text.append("\n").append(kind.label).append(": ").append(ms/60000).append(" min")
+        }
+        if (events == null || notifications == null) text.append("\nStara sesija: nema tačnih oznaka hrkanja/obaveštenja.")
+        else {
+            text.append("\nVremenske oznake (1 s): ").append(events.size).append("/").append(item.optInt("episodes"))
+                .append(" hrkanja, ").append(notifications.size).append("/").append(item.optInt("notifications")).append(" obaveštenja.")
+            if (events.size < item.optInt("episodes") || notifications.size < item.optInt("notifications"))
+                text.append("\nPrikaz oznaka je nepotpun (ograničenje ili nedostajući podaci).")
+            if (night.stages.isNotEmpty() && events.isNotEmpty()) {
+                text.append("\nZabeležena hrkanja po fazama (ne stopa po satu):")
+                events.groupingBy { SleepTimeline.kindAt(it,night.stages) }.eachCount().forEach { (kind, count) ->
+                    text.append("\n").append(kind.label).append(": ").append(count)
+                }
+            }
+        }
+        text.append("\nFaze su procena izvora; poslato obaveštenje nije potvrda vibracije niti buđenja.")
+        findViewById<TextView>(R.id.sleepDetails).text = text.toString()
+        findViewById<SleepTimelineView>(R.id.sleepTimeline).show(night,start,end,events.orEmpty(),notifications.orEmpty())
     }
 
     private fun showAlertResponse(item: JSONObject?) {
@@ -1176,6 +1285,7 @@ class MainActivity : Activity() {
     override fun onPause() {
         handler.removeCallbacks(updater)
         stopPlayback()
+        clearSleep()
         super.onPause()
     }
 
@@ -1188,6 +1298,7 @@ class MainActivity : Activity() {
 
     companion object {
         private const val REQUEST_PERMISSIONS = 1001
+        private const val REQUEST_SLEEP = 1002
         private const val REQUEST_EXPORT_CSV = 5001
         private const val REQUEST_BACKUP = 5002
         private const val REQUEST_RESTORE = 5003
