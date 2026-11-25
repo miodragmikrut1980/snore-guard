@@ -330,7 +330,7 @@ class SessionStore(context: Context) {
             "recognized_events", "alarm_series", "posted_notifications",
             "estimated_snoring_seconds", "stop_reason",
             "max_ai_gap_ms", "ai_gaps_over_5s"
-        ) + AlertResponseRecord.columns.map { "response_" + it } + NightHours.allLabels().map { "hour_${it}_events" } + NightHours.allLabels().map { "hour_${it}_notifications" }
+        ) + AlertResponseRecord.columns.map { "response_" + it } + AlertResponseRecord.timingColumns.map { "response_timing_" + it } + NightHours.allLabels().map { "hour_${it}_events" } + NightHours.allLabels().map { "hour_${it}_notifications" }
         val text = StringBuilder().append(CsvCell.row(columns)).append("\r\n")
         val format = SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ssXXX", Locale.ROOT)
         val records = history()
@@ -355,6 +355,10 @@ class SessionStore(context: Context) {
             ) + AlertResponseRecord.columns.map { key ->
                 val response = AlertResponseRecord.read(item)
                 if (response == null) "" else AlertResponseRecord.encode(response).optInt(key).toString()
+            } + AlertResponseRecord.timingColumns.map { key ->
+                item.optJSONObject("alertResponse")?.optJSONObject("timing")?.let {
+                    if (AlertResponseRecord.read(item)?.timing != null) it.optLong(key).toString() else ""
+                } ?: ""
             } + NightHours.allLabels().map { hour ->
                 if (hist == null) "" else hist.optInt(hour, 0).toString()
             }

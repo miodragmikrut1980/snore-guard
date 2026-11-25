@@ -60,6 +60,14 @@ object NightReport {
                 if (response != null) {
                     line("Reakcije u 60 s: procenjene " + response.assessed + ", nepouzdane " + response.inconclusive, 11f)
                     line("Smirilo se " + response.quiet + " | vratilo se " + response.returned + " | nastavilo se " + response.continued, 11f)
+                    line("Smirivanje: " + (response.settledPercent?.let { decimal(it) + "%" } ?: "nema procene") +
+                        " | Bez povratka 60 s: " + (response.quietPercent?.let { decimal(it) + "%" } ?: "nema procene"), 11f)
+                    response.timing?.let { t ->
+                        line("Povratak do 10 min: " + t.returns + " | Bez povratka: " + t.noReturn10m +
+                            " | Nepotpuno: " + (t.interrupted + t.pending), 11f)
+                        line("Prosečna tišina pre povratka: " +
+                            (t.meanQuietSeconds?.let { decimal(it) + " s (n=" + t.returns + ")" } ?: "nema podatka"), 11f)
+                    }
                     line("Smart: prekinute dodatne serije " + response.smartSuppressed, 11f)
                 }
                 val matching = clips.filter { it.recordedAt in start..end }

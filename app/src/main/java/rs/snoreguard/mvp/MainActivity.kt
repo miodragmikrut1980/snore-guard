@@ -649,6 +649,14 @@ class MainActivity : Activity() {
             r == null -> "Dostupno za nove sesije od v0.8.1."
             else -> "Započete serije: ${r.started} • procenjene: ${r.assessed}\n" +
                 "Smirilo se: ${r.quiet} • vratilo se: ${r.returned} • nastavilo se: ${r.continued}\n" +
+                "Smirivanje u 30 s: " + (r.settledPercent?.let { NightReport.decimal(it) + "%" } ?: "nema procene") +
+                " (${r.settled}/${r.assessed})\n" +
+                "Bez povratka u prvih 60 s: " + (r.quietPercent?.let { NightReport.decimal(it) + "%" } ?: "nema procene") + "\n" +
+                (r.timing?.let { t ->
+                    "Povratak do 10 min od početka tišine: ${t.returns}; bez povratka 10 min: ${t.noReturn10m}; nepotpuno: ${t.interrupted}; u toku: ${t.pending}\n" +
+                    (t.meanQuietSeconds?.let { "Prosečna tišina pre povratka: " + NightReport.decimal(it) + " s (n=${t.returns}); najkraće/najduže: ${t.minQuietMs / 1000} / ${t.maxQuietMs / 1000} s.\n" } ?: "") +
+                    (t.meanAfterAlarmSeconds?.let { "Prosečno od alarma do povratka: " + NightReport.decimal(it) + " s.\n" } ?: "")
+                } ?: "Vreme do povratka dostupno od v0.9.2.\n") +
                 "Nepouzdano: ${r.inconclusive} • u toku: ${r.pending}\n" +
                 "Smart režim: serije sa preskočenim nastavkom ${r.smartSuppressed}.\n" +
                 "Smirivanje: 10 s bez detekcije u prvih 30 s; posmatranje ukupno 60 s. " +
@@ -925,7 +933,15 @@ class MainActivity : Activity() {
                 setTextColor(getColor(R.color.text_primary))
                 setOnClickListener { chooseClipAction(clip) }
             }
+            val play = Button(this).apply {
+                text = "▶ Pusti snimak"
+                isAllCaps = false
+                setTextColor(getColor(R.color.text_primary))
+                setBackgroundResource(R.drawable.bg_secondary)
+                setOnClickListener { playClip(clip) }
+            }
             clipList.addView(button)
+            clipList.addView(play)
         }
     }
 
@@ -934,7 +950,6 @@ class MainActivity : Activity() {
         var selected = clip.label.ordinal
         AlertDialog.Builder(this)
             .setTitle("Ocenjivanje snimka")
-            .setMessage("Ovo je tvoja subjektivna procena, ne automatska dijagnoza.")
             .setSingleChoiceItems(labels.map { it.display }.toTypedArray(), selected) { _, which ->
                 selected = which
             }
@@ -976,6 +991,22 @@ class MainActivity : Activity() {
             }.show()
     }
 
+    private fun playClip(clip: SnoreClip) {
+        if (MonitorService.isActive) {
+            toast("Zaustavi praćenje pre preslušavanja da zvuk ne utiče na detekciju.")
+            return
+        }
+        val file = clipStore.fileFor(clip.filename)
+        if (file == null) { toast("Snimak nije dostupan."); return }
+        try {
+            stopPlayback()
+            clipPlayer = ClipPlayer(this, file)
+        } catch (error: Exception) {
+            stopPlayback()
+            toast("Ne može da se pusti snimak: " + error.message)
+        }
+    }
+
     private fun chooseClipAction(clip: SnoreClip) {
         AlertDialog.Builder(this)
             .setTitle("Zvučni snimak • " + clip.label.display)
@@ -988,15 +1019,7 @@ class MainActivity : Activity() {
                     return@setItems
                 }
                 when (which) {
-                    0 -> if (MonitorService.isActive) {
-                        toast("Zaustavi praćenje pre preslušavanja da zvuk ne utiče na detekciju.")
-                    } else try {
-                        stopPlayback()
-                        clipPlayer = ClipPlayer(this, file)
-                    } catch (error: Exception) {
-                        stopPlayback()
-                        toast("Ne može da se pusti snimak: " + error.message)
-                    }
+                    0 -> playClip(clip)
                     1 -> editClipLabel(clip)
                     2 -> editClipNote(clip)
                     3 -> try {

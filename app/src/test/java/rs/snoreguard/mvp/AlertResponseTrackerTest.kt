@@ -21,6 +21,33 @@ class AlertResponseTrackerTest {
         val f = Fixture(); f.start(); f.until(60_000) { it == 25_000L }
         assertEquals(1, f.t.snapshot().returned)
     }
+    @Test fun earlyReturnTiming() {
+        val f = Fixture(); f.start(); f.until(60_000) { it == 25_000L }
+        val s = f.t.snapshot()
+        assertEquals(100.0, s.settledPercent!!, 0.001)
+        assertEquals(0.0, s.quietPercent!!, 0.001)
+        assertEquals(1, s.timing!!.returns)
+        assertEquals(24_750L, s.timing!!.sumQuietMs)
+        assertEquals(25_000L, s.timing!!.sumAfterAlarmMs)
+    }
+    @Test fun recurrenceAfterMinute() {
+        val f = Fixture(); f.start(); f.until(120_000) { it == 120_000L }
+        val s = f.t.snapshot()
+        assertEquals(1, s.quiet)
+        assertEquals(1, s.timing!!.returns)
+        assertEquals(119_750L, s.timing!!.sumQuietMs)
+        assertEquals(0, s.timing!!.pending)
+    }
+    @Test fun longQuietAndInterruption() {
+        val f = Fixture(); f.start(); f.until(601_000)
+        assertEquals(1, f.t.snapshot().timing!!.noReturn10m)
+        val g = Fixture(); g.start(); g.until(60_000)
+        assertEquals(1, g.t.finish().timing!!.interrupted)
+        val h = Fixture(); h.start(); h.until(60_000); h.now += 3000
+        h.t.frame(true, true)
+        assertEquals(0, h.t.snapshot().timing!!.returns)
+        assertEquals(1, h.t.snapshot().timing!!.interrupted)
+    }
     @Test fun continuedPositive() {
         val f = Fixture(); f.start(); f.until(60_000) { it % 2_000 == 0L }
         assertEquals(1, f.t.snapshot().continued)

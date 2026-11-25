@@ -1,5 +1,12 @@
 # Changelog
 
+## v0.9.2 — Direct clip playback and alarm-response timing
+- Direct play button per WAV, and remove message competing with the review choices in the rating dialog.
+- Show observed settling and sustained-quiet percentages over valid 60-second observations only.
+- Track time from first posted alert and initial confirmed quiet to the first return, up to 10 minutes of quiet. Report interrupted observation separately; no invented timing for earlier nights.
+- Include optional timing fields in JSON/ZIP and CSV and summary in PDF; preserve detector and alarm behavior.
+- Deterministic recurrence, censoring and stale-frame tests. Huawei sleep integration not yet included.
+
 ## v0.9.1 — Night archive fixes
 - Clarify missing hourly data and guard nullable history selection.
 
