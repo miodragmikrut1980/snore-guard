@@ -1,5 +1,10 @@
 # Changelog
 
+## v0.10.1 — Readable night dashboard
+- Replace dense analytics and response paragraphs with native summary tiles, response percentage ring, outcome rows, recurrence duration card and collapsible technical details.
+- Display sub-0.1% positive-window fractions without implying zero detections; keep index definition and distinguish observed settling from verified watch vibration.
+- Preserve storage, Health Connect, detector, alert behavior and PDF export. Show explicit missing-data states and sample sizes. No device screenshot validation yet.
+
 ## v0.10.0 — Health Connect sleep integration (Android 14+)
 - User-requested read-only sleep session and stage data for a selected completed SnoreGuard night; source package shown, explicit record choice if multiple overlap.
 - Local sleep timeline with detected events and posted notification markers at one-second resolution for new nights; bounded first 256 events and 128 notifications, independent full hourly totals. Missing and ambiguous stages remain unknown.

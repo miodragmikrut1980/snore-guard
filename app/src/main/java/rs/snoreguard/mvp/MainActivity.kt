@@ -377,7 +377,7 @@ class MainActivity : Activity() {
         return dateFormat.format(Date(start)) + " – " + dateFormat.format(Date(end)) +
             "\nPraćenje: " + NightReport.decimal((end - start).coerceAtLeast(0) / 3600000.0) + " h" +
             "\nDetektovani događaji: " + item.optInt("episodes") +
-            "\nIndeks hrkanja: " + (result?.score?.toString()?.plus(" / 100") ?: "nema dovoljno podataka") +
+            "\n" + (result?.let { "Hrkanja po analiziranom satu: " + NightReport.decimal(it.eventsPerHour) } ?: "Stopa hrkanja nije dostupna") +
             "\nSerije alarma: " + item.optInt("alerts") + " • obaveštenja: " +
             if (item.has("notifications")) item.optInt("notifications").toString() else "nepoznato"
     }
@@ -563,7 +563,6 @@ class MainActivity : Activity() {
         if (currentTab == 1) {
             showCharts(selected)
             showAdvancedAnalytics(selected, false)
-            showAlertResponse(selected)
             val key = selected?.let { it.optLong("start").toString() + ":" + it.optLong("end") }.orEmpty()
             if (key != sleepSelection || (Build.VERSION.SDK_INT >= 34 &&
                     checkSelfPermission("android.permission.health.READ_SLEEP") != PackageManager.PERMISSION_GRANTED)) {
@@ -750,43 +749,11 @@ class MainActivity : Activity() {
         findViewById<SleepTimelineView>(R.id.sleepTimeline).show(night,start,end,events.orEmpty(),notifications.orEmpty())
     }
 
-    private fun showAlertResponse(item: JSONObject?) {
-        val target = findViewById<TextView>(R.id.alertResponseDetails)
-        val r = AlertResponseRecord.read(item)
-        target.text = when {
-            item?.optBoolean("isTest") == true -> "Probni režim ne beleži reakcije tokom noći."
-            r == null -> "Dostupno za nove sesije od v0.8.1."
-            else -> "Započete serije: ${r.started} • procenjene: ${r.assessed}\n" +
-                "Smirilo se: ${r.quiet} • vratilo se: ${r.returned} • nastavilo se: ${r.continued}\n" +
-                "Smirivanje u 30 s: " + (r.settledPercent?.let { NightReport.decimal(it) + "%" } ?: "nema procene") +
-                " (${r.settled}/${r.assessed})\n" +
-                "Bez povratka u prvih 60 s: " + (r.quietPercent?.let { NightReport.decimal(it) + "%" } ?: "nema procene") + "\n" +
-                (r.timing?.let { t ->
-                    "Povratak do 10 min od početka tišine: ${t.returns}; bez povratka 10 min: ${t.noReturn10m}; nepotpuno: ${t.interrupted}; u toku: ${t.pending}\n" +
-                    (t.meanQuietSeconds?.let { "Prosečna tišina pre povratka: " + NightReport.decimal(it) + " s (n=${t.returns}); najkraće/najduže: ${t.minQuietMs / 1000} / ${t.maxQuietMs / 1000} s.\n" } ?: "") +
-                    (t.meanAfterAlarmSeconds?.let { "Prosečno od alarma do povratka: " + NightReport.decimal(it) + " s.\n" } ?: "")
-                } ?: "Vreme do povratka dostupno od v0.9.2.\n") +
-                "Nepouzdano: ${r.inconclusive} • u toku: ${r.pending}\n" +
-                "Smart režim: serije sa preskočenim nastavkom ${r.smartSuppressed}.\n" +
-                "Smirivanje: 10 s bez detekcije u prvih 30 s; posmatranje ukupno 60 s. " +
-                "Ovo ne potvrđuje vibraciju sata niti njen efekat."
-        }
-    }
-
     private fun showAdvancedAnalytics(item: JSONObject?, active: Boolean) {
-        val view = findViewById<TextView>(R.id.advancedAnalytics)
         val result = item?.let { NightReport.metrics(it, if (active) System.currentTimeMillis() else it.optLong("end")) }
         val reviews = NightAnalytics.reviews(clipStore.list().map { it.label })
-        val details = if (result == null) "Nema kompatibilnih podataka za naprednu analizu."
-        else "Indeks hrkanja: " + (result.score?.let { "$it / 100" } ?: "nedovoljno podataka") +
-            "\nDogađaji po analiziranom satu: " + NightReport.decimal(result.eventsPerHour) +
-            "\nAnalizirano: " + NightReport.decimal(result.analysedHours) + " h • pokrivenost: " +
-            NightReport.decimal(result.coverage * 100) + "%" +
-            "\nPozitivni AI prozori: " + NightReport.decimal(result.positivePercent) + "%"
-        view.text = details + "\n\nOcene svih sačuvanih isečaka: " +
-            "${reviews.snore} hrkanje • ${reviews.falseAlarm} lažni • ${reviews.uncertain} nejasni • ${reviews.unreviewed} neocenjeni" +
-            (reviews.confirmedPercent?.let { "\nKorisnik potvrdio $it% jasno ocenjenih isečaka (n=${reviews.reviewed})." } ?: "") +
-            "\nOvo nije klinička tačnost AI modela. Indeks meri udeo pozitivnih prozora, ne jačinu zvuka ni apneju."
+        findViewById<StatsDashboardView>(R.id.statsDashboard).render(
+            item?.optInt("episodes"), result, AlertResponseRecord.read(item), reviews)
         findViewById<Button>(R.id.doctorPdfButton).isEnabled =
             !MonitorService.isActive && !fullBackupBusy && store.history().length() > 0
     }
