@@ -63,7 +63,7 @@ class StatsDashboardView @JvmOverloads constructor(context: Context, attrs: Attr
         return panel
     }
     private fun tileRow(a: Pair<String,String>, b: Pair<String,String>) {
-        val row = LinearLayout(context).apply { orientation = HORIZONTAL; baselineAligned = false }
+        val row = LinearLayout(context).apply { orientation = HORIZONTAL; setBaselineAligned(false) }
         addView(row, LayoutParams(LayoutParams.MATCH_PARENT, LayoutParams.WRAP_CONTENT).apply { topMargin = dp(10) })
         listOf(a,b).forEachIndexed { i, v ->
             val tile = LinearLayout(context).apply {
